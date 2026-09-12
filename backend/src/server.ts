@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { prisma } from './lib/prisma';
+import { authRoutes } from './routes/auth.routes';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -43,6 +44,8 @@ app.get('/api/health', async (_req, res) => {
     });
   }
 });
+
+app.use('/api/auth', authRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
