@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { Appointment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { AppointmentDialog } from '@/components/appointment-dialog';
 
 const START_HOUR = 8;
 const END_HOUR = 19;
@@ -18,6 +19,7 @@ export default function AgendaPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(() => new Date());
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const dateStr = useMemo(() => {
     const y = date.getFullYear();
@@ -26,22 +28,23 @@ export default function AgendaPage() {
     return `${y}-${m}-${d}`;
   }, [date]);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const list = await api.get<Appointment[]>(
-          `/api/appointments?date=${dateStr}`
-        );
-        setAppointments(list);
-      } catch {
-        router.push('/login');
-      } finally {
-        setLoading(false);
-      }
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const list = await api.get<Appointment[]>(
+        `/api/appointments?date=${dateStr}`
+      );
+      setAppointments(list);
+    } catch {
+      router.push('/login');
+    } finally {
+      setLoading(false);
     }
-    load();
   }, [dateStr, router]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   function changeDay(delta: number) {
     const next = new Date(date);
@@ -71,7 +74,7 @@ export default function AgendaPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Agenda</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground capitalize">
             {date.toLocaleDateString('pt-BR', {
               weekday: 'long',
               day: '2-digit',
@@ -89,6 +92,10 @@ export default function AgendaPage() {
           </Button>
           <Button variant="outline" size="icon" onClick={() => changeDay(1)}>
             <ChevronRight className="size-4" />
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="size-4" />
+            Novo agendamento
           </Button>
         </div>
       </div>
@@ -147,6 +154,13 @@ export default function AgendaPage() {
           )}
         </CardContent>
       </Card>
+
+      <AppointmentDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        defaultDate={date}
+        onCreated={load}
+      />
     </div>
   );
 }
