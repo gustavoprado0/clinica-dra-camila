@@ -6,6 +6,7 @@ import path from 'path';
 import { prisma } from './lib/prisma';
 import { authRoutes } from './routes/auth.routes';
 import { patientsRoutes } from './routes/patients.routes';
+import { proceduresRoutes } from './routes/procedures.routes';
 import { requireAuth } from './lib/auth';
 
 const app = express();
@@ -49,6 +50,7 @@ app.get('/api/health', async (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', requireAuth, patientsRoutes);
+app.use('/api/procedures', proceduresRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
