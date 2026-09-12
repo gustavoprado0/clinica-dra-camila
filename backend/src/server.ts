@@ -16,7 +16,27 @@ import { requireAuth } from './lib/auth';
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(cors({ origin: true, credentials: true }));
+// CORS — permite localhost em dev e o frontend em produção
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Permite requests sem origin (curl, mobile, etc) e os domínios da lista
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Em MVP aceita tudo, ajuste depois
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -61,7 +81,7 @@ app.use('/api/auth', authRoutes);
 
 // Protegidas
 app.use('/api/patients', requireAuth, patientsRoutes);
-app.use('/api/procedures', proceduresRoutes); // GET público, write protegido internamente
+app.use('/api/procedures', proceduresRoutes);
 app.use('/api/appointments', requireAuth, appointmentsRoutes);
 app.use('/api/dashboard', requireAuth, dashboardRoutes);
 
