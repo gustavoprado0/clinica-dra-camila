@@ -8,6 +8,7 @@ import { authRoutes } from './routes/auth.routes';
 import { patientsRoutes } from './routes/patients.routes';
 import { proceduresRoutes } from './routes/procedures.routes';
 import { appointmentsRoutes } from './routes/appointments.routes';
+import { dashboardRoutes } from './routes/dashboard.routes';
 import { requireAuth } from './lib/auth';
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/patients', requireAuth, patientsRoutes);
 app.use('/api/procedures', proceduresRoutes);
 app.use('/api/appointments', requireAuth, appointmentsRoutes);
+app.use('/api/dashboard', requireAuth, dashboardRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);

@@ -50,3 +50,7 @@ Desktop.ini
 # Misc
 *.tsbuildinfo
 .eslintcache
+
+# Curl temp files
+cookies.txt
+**/cookies.txt
