@@ -141,7 +141,7 @@ export function AppointmentDialog({
                 <User className="size-4 text-muted-foreground" />
                 Paciente <span className="text-destructive">*</span>
               </Label>
-              <Select value={patientId} onValueChange={setPatientId}>
+              <Select value={patientId} onValueChange={(v) => setPatientId(v ?? "")}>
                 <SelectTrigger id="patient" className="w-full h-11">
                   <SelectValue placeholder="Escolha um paciente">
                     {patientName}
@@ -174,7 +174,7 @@ export function AppointmentDialog({
                 <Stethoscope className="size-4 text-muted-foreground" />
                 Procedimento <span className="text-destructive">*</span>
               </Label>
-              <Select value={procedureId} onValueChange={setProcedureId}>
+              <Select value={procedureId} onValueChange={(v) => setProcedureId(v ?? "")}>
                 <SelectTrigger id="procedure" className="w-full h-11">
                   <SelectValue placeholder="Escolha um procedimento">
                     {procedureName}

@@ -49,6 +49,7 @@ export function AppointmentEditDialog({
 
   useEffect(() => {
     if (!open || !appointment) return;
+    const apt = appointment;
 
     async function load() {
       setLoading(true);
@@ -60,10 +61,10 @@ export function AppointmentEditDialog({
         setPatients(p);
         setProcedures(proc);
 
-        setPatientId(appointment.patientId);
-        setProcedureId(appointment.procedureId);
+        setPatientId(apt.patientId);
+        setProcedureId(apt.procedureId);
 
-        const d = new Date(appointment.scheduledAt);
+        const d = new Date(apt.scheduledAt);
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
@@ -128,7 +129,7 @@ export function AppointmentEditDialog({
                 <User className="size-4 text-muted-foreground" />
                 Paciente <span className="text-destructive">*</span>
               </Label>
-              <Select value={patientId} onValueChange={setPatientId}>
+              <Select value={patientId} onValueChange={(v) => setPatientId(v ?? "")}>
                 <SelectTrigger className="w-full h-11">
                   <SelectValue placeholder="Escolha um paciente">
                     {patientName}
@@ -149,7 +150,7 @@ export function AppointmentEditDialog({
                 <Stethoscope className="size-4 text-muted-foreground" />
                 Procedimento <span className="text-destructive">*</span>
               </Label>
-              <Select value={procedureId} onValueChange={setProcedureId}>
+              <Select value={procedureId} onValueChange={(v) => setProcedureId(v ?? "")}>
                 <SelectTrigger className="w-full h-11">
                   <SelectValue placeholder="Escolha um procedimento">
                     {procedureName}
