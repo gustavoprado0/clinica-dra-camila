@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { DashboardSummary, User } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -36,7 +40,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Carregando...</p>
+        <p className="text-muted-foreground">Carregando...</p>
       </div>
     );
   }
@@ -45,75 +49,67 @@ export default function DashboardPage() {
   const today = summary?.today || [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-muted/30">
+      <header className="bg-background border-b">
+        <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">
-              {user?.name ?? 'Dashboard'}
-            </h1>
-            <p className="text-xs text-gray-500">Painel da clínica</p>
+            <h1 className="text-lg font-semibold">{user?.name ?? 'Dashboard'}</h1>
+            <p className="text-xs text-muted-foreground">Painel da clínica</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition"
-          >
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
             Sair
-          </button>
+          </Button>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         <section>
-          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
             Hoje
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Consultas" value={stats.totalToday} color="blue" />
-            <StatCard label="Confirmadas" value={stats.confirmed} color="green" />
-            <StatCard label="Pendentes" value={stats.pending} color="yellow" />
+            <StatCard label="Consultas" value={stats.totalToday} accent="text-blue-600" />
+            <StatCard label="Confirmadas" value={stats.confirmed} accent="text-green-600" />
+            <StatCard label="Pendentes" value={stats.pending} accent="text-amber-600" />
           </div>
         </section>
 
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-              Agenda de hoje
-            </h2>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-            {today.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-sm">
-                Nenhuma consulta agendada para hoje.
-              </div>
-            ) : (
-              today.map((apt) => (
-                <div
-                  key={apt.id}
-                  className="px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="text-sm font-medium text-gray-900 w-14">
-                      {new Date(apt.scheduledAt).toLocaleTimeString('pt-BR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {apt.patient?.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {apt.procedure?.name}
-                      </p>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+            Agenda de hoje
+          </h2>
+          <Card>
+            <CardContent className="p-0">
+              {today.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  Nenhuma consulta agendada para hoje.
+                </div>
+              ) : (
+                today.map((apt, i) => (
+                  <div key={apt.id}>
+                    {i > 0 && <Separator />}
+                    <div className="px-5 py-4 flex items-center justify-between hover:bg-muted/40 transition">
+                      <div className="flex items-center gap-4">
+                        <div className="text-sm font-medium w-14">
+                          {new Date(apt.scheduledAt).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                        <div>
+                          <p className="font-medium">{apt.patient?.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {apt.procedure?.name}
+                          </p>
+                        </div>
+                      </div>
+                      <StatusBadge status={apt.status} />
                     </div>
                   </div>
-                  <StatusBadge status={apt.status} />
-                </div>
-              ))
-            )}
-          </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </section>
       </main>
     </div>
@@ -123,36 +119,33 @@ export default function DashboardPage() {
 function StatCard({
   label,
   value,
-  color,
+  accent,
 }: {
   label: string;
   value: number;
-  color: 'blue' | 'green' | 'yellow';
+  accent: string;
 }) {
-  const colors = {
-    blue: 'text-blue-600',
-    green: 'text-green-600',
-    yellow: 'text-yellow-600',
-  };
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className={`text-3xl font-bold ${colors[color]}`}>{value}</p>
-      <p className="text-sm text-gray-500 mt-1">{label}</p>
-    </div>
+    <Card>
+      <CardContent className="pt-6">
+        <p className={`text-3xl font-bold ${accent}`}>{value}</p>
+        <p className="text-sm text-muted-foreground mt-1">{label}</p>
+      </CardContent>
+    </Card>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; className: string }> = {
-    PENDING: { label: 'Pendente', className: 'bg-yellow-100 text-yellow-700' },
-    CONFIRMED: { label: 'Confirmada', className: 'bg-green-100 text-green-700' },
-    CANCELLED: { label: 'Cancelada', className: 'bg-red-100 text-red-700' },
-    DONE: { label: 'Concluída', className: 'bg-gray-100 text-gray-600' },
+  const map: Record<
+    string,
+    { label: string; className: string }
+  > = {
+    PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 hover:bg-amber-100' },
+    CONFIRMED: { label: 'Confirmada', className: 'bg-green-100 text-green-800 hover:bg-green-100' },
+    CANCELLED: { label: 'Cancelada', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
+    DONE: { label: 'Concluída', className: 'bg-gray-100 text-gray-700 hover:bg-gray-100' },
   };
-  const info = map[status] || { label: status, className: 'bg-gray-100 text-gray-600' };
-  return (
-    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${info.className}`}>
-      {info.label}
-    </span>
-  );
+  const info =
+    map[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
+  return <Badge className={info.className}>{info.label}</Badge>;
 }
