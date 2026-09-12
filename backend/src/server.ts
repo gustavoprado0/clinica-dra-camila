@@ -9,6 +9,7 @@ import { patientsRoutes } from './routes/patients.routes';
 import { proceduresRoutes } from './routes/procedures.routes';
 import { appointmentsRoutes } from './routes/appointments.routes';
 import { dashboardRoutes } from './routes/dashboard.routes';
+import { publicRoutes } from './routes/public.routes';
 import { requireAuth } from './lib/auth';
 
 const app = express();
@@ -49,6 +50,8 @@ app.get('/api/health', async (_req, res) => {
     });
   }
 });
+
+app.use('/api/public', publicRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', requireAuth, patientsRoutes);
