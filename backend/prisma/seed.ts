@@ -7,6 +7,23 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando seed...');
 
+  // -------- Configurações da clínica --------
+  const existingSettings = await prisma.clinicSettings.findFirst();
+  if (existingSettings) {
+    console.log('⚙️  Configurações já existem — mantidas');
+  } else {
+    const settings = await prisma.clinicSettings.create({
+      data: {
+        openHour: 8,
+        closeHour: 19,
+        slotMinutes: 60,
+        weekdays: '1,2,3,4,5',
+      },
+    });
+    console.log(`⚙️  Configurações criadas: ${settings.openHour}h-${settings.closeHour}h`);
+  }
+
+  // -------- Usuário: Dra. Camila --------
   const hashedPassword = await bcrypt.hash('camila123', 10);
 
   const camila = await prisma.user.upsert({
@@ -19,9 +36,9 @@ async function main() {
       role: 'admin',
     },
   });
+  console.log(`👩‍⚕️  User: ${camila.name} (${camila.email})`);
 
-  console.log(`👩‍⚕️  User criado: ${camila.name} (${camila.email})`);
-
+  // -------- Procedimentos padrão --------
   const procedures = [
     { name: 'Avaliação',   durationMin: 30, price: 0   },
     { name: 'Limpeza',     durationMin: 60, price: 180 },

@@ -7,6 +7,7 @@ import {
   Calendar,
   Users,
   Stethoscope,
+  Settings,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -65,7 +66,20 @@ export function AppNav() {
         })}
       </div>
 
-      <div className="border-t p-3">
+      <div className="border-t p-3 space-y-1">
+        <Link
+          href="/configuracoes"
+          className={cn(
+            'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition',
+            pathname.startsWith('/configuracoes')
+              ? 'bg-muted text-foreground font-medium'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          )}
+        >
+          <Settings className="size-4" />
+          Configurações
+        </Link>
+
         <Button
           variant="ghost"
           size="sm"

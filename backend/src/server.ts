@@ -10,6 +10,7 @@ import { proceduresRoutes } from './routes/procedures.routes';
 import { appointmentsRoutes } from './routes/appointments.routes';
 import { dashboardRoutes } from './routes/dashboard.routes';
 import { publicRoutes } from './routes/public.routes';
+import { settingsRoutes } from './routes/settings.routes';
 import { requireAuth } from './lib/auth';
 
 const app = express();
@@ -51,11 +52,16 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
+// Público
 app.use('/api/public', publicRoutes);
+app.use('/api/settings', settingsRoutes);
 
+// Auth
 app.use('/api/auth', authRoutes);
+
+// Protegidas
 app.use('/api/patients', requireAuth, patientsRoutes);
-app.use('/api/procedures', proceduresRoutes);
+app.use('/api/procedures', proceduresRoutes); // GET público, write protegido internamente
 app.use('/api/appointments', requireAuth, appointmentsRoutes);
 app.use('/api/dashboard', requireAuth, dashboardRoutes);
 

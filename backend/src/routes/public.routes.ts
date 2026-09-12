@@ -5,6 +5,16 @@ import { buildConfirmationMessage, sendWhatsApp } from '../utils/whatsapp';
 
 export const publicRoutes = Router();
 
+async function getSettings() {
+  let settings = await prisma.clinicSettings.findFirst();
+  if (!settings) {
+    settings = await prisma.clinicSettings.create({
+      data: { openHour: 8, closeHour: 19, slotMinutes: 60, weekdays: '1,2,3,4,5' },
+    });
+  }
+  return settings;
+}
+
 // Lista de procedimentos disponíveis (público)
 publicRoutes.get('/procedures', async (_req, res) => {
   const list = await prisma.procedure.findMany({
@@ -21,8 +31,15 @@ publicRoutes.get('/slots', async (req, res) => {
     return res.status(400).json({ error: 'Data inválida (use YYYY-MM-DD)' });
   }
 
-  const START_HOUR = 8;
-  const END_HOUR = 19;
+  const settings = await getSettings();
+  const weekdays = settings.weekdays.split(',').map(Number);
+
+  const dayDate = new Date(`${date}T12:00:00`);
+  const dayOfWeek = dayDate.getDay();
+
+  if (!weekdays.includes(dayOfWeek)) {
+    return res.json({ date, closed: true, slots: [] });
+  }
 
   const start = new Date(`${date}T00:00:00`);
   const end = new Date(`${date}T23:59:59.999`);
@@ -38,15 +55,21 @@ publicRoutes.get('/slots', async (req, res) => {
   const busyHours = new Set(busy.map((b) => new Date(b.scheduledAt).getHours()));
 
   const slots: { time: string; available: boolean }[] = [];
-  for (let h = START_HOUR; h < END_HOUR; h++) {
-    const hh = String(h).padStart(2, '0');
+  const step = settings.slotMinutes / 60;
+
+  for (let h = settings.openHour; h < settings.closeHour; h += step) {
+    const hour = Math.floor(h);
+    const minutes = Math.round((h - hour) * 60);
+    const hh = String(hour).padStart(2, '0');
+    const mm = String(minutes).padStart(2, '0');
+
     slots.push({
-      time: `${hh}:00`,
-      available: !busyHours.has(h),
+      time: `${hh}:${mm}`,
+      available: !busyHours.has(hour),
     });
   }
 
-  res.json({ date, slots });
+  res.json({ date, closed: false, slots });
 });
 
 // Criar agendamento pela página pública
@@ -68,8 +91,15 @@ publicRoutes.post('/book', async (req, res) => {
   const procedure = await prisma.procedure.findUnique({ where: { id: procedureId } });
   if (!procedure) return res.status(404).json({ error: 'Procedimento não encontrado' });
 
-  // Verifica se o horário está livre
   const dt = new Date(scheduledAt);
+
+  // Verifica se o dia está aberto
+  const settings = await getSettings();
+  const weekdays = settings.weekdays.split(',').map(Number);
+  if (!weekdays.includes(dt.getDay())) {
+    return res.status(409).json({ error: 'A clínica não atende nesse dia' });
+  }
+
   const hourStart = new Date(dt);
   hourStart.setMinutes(0, 0, 0);
   const hourEnd = new Date(hourStart);
@@ -86,7 +116,6 @@ publicRoutes.post('/book', async (req, res) => {
     return res.status(409).json({ error: 'Horário já ocupado. Escolha outro.' });
   }
 
-  // Reaproveita paciente existente pelo WhatsApp ou cria novo
   let patient = await prisma.patient.findFirst({
     where: { whatsapp: patientWhatsapp },
   });
@@ -107,7 +136,6 @@ publicRoutes.post('/book', async (req, res) => {
     include: { patient: true, procedure: true },
   });
 
-  // WhatsApp mock
   const dateStr = dt.toLocaleDateString('pt-BR');
   const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 

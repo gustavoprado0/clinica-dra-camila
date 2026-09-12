@@ -113,3 +113,17 @@ model FinancialRecord {
 
   @@map("financial_records")
 }
+
+// ============================================
+// CLINIC SETTINGS — configurações da clínica (singleton)
+// ============================================
+model ClinicSettings {
+  id          String   @id @default(cuid())
+  openHour    Int      @default(8)
+  closeHour   Int      @default(19)
+  slotMinutes Int      @default(60)
+  weekdays    String   @default("1,2,3,4,5") // 0=Dom, 1=Seg ... 6=Sáb
+  updatedAt   DateTime @updatedAt
+
+  @@map("clinic_settings")
+}
