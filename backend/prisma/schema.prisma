@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USERS — quem acessa o painel (Dra. + staff)
+// ============================================
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("admin") // admin | staff
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ============================================
+// PATIENTS — pacientes da clínica
+// ============================================
+model Patient {
+  id           String        @id @default(cuid())
+  name         String
+  whatsapp     String
+  cpf          String?       @unique
+  birthDate    DateTime?
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  appointments Appointment[]
+
+  @@index([name])
+  @@map("patients")
+}
+
+// ============================================
+// PROCEDURES — procedimentos oferecidos
+// ============================================
+model Procedure {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  durationMin  Int           @default(60)
+  price        Float         @default(0)
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  appointments Appointment[]
+
+  @@map("procedures")
+}
+
+// ============================================
+// APPOINTMENTS — agendamentos
+// ============================================
+model Appointment {
+  id           String    @id @default(cuid())
+  patientId    String
+  procedureId  String
+  scheduledAt  DateTime
+  status       String    @default("PENDING") // PENDING | CONFIRMED | CANCELLED | DONE
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  procedure    Procedure @relation(fields: [procedureId], references: [id])
+  messages     Message[]
+
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("appointments")
+}
+
+// ============================================
+// MESSAGES — mensagens enviadas (WhatsApp)
+// ============================================
+model Message {
+  id            String      @id @default(cuid())
+  appointmentId String
+  channel       String      @default("WHATSAPP") // WHATSAPP | SMS | EMAIL
+  to            String
+  body          String
+  status        String      @default("SIMULATED") // SIMULATED | SENT | FAILED
+  createdAt     DateTime    @default(now())
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@map("messages")
+}
+
+// ============================================
+// FINANCIAL RECORDS — V1: entra depois
+// ============================================
+model FinancialRecord {
+  id            String    @id @default(cuid())
+  appointmentId String?
+  description   String
+  amount        Float
+  type          String    // INCOME | EXPENSE
+  paid          Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  @@map("financial_records")
+}
