@@ -4,3 +4,6 @@ dist/
 prisma/*.db
 prisma/*.db-journal
 src/generated/
+
+# Temporário: env de produção
+.env.production
