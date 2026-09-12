@@ -4,7 +4,7 @@ services:
     container_name: clinica_camila_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: camila_admin
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: clinica_camila
     ports:
