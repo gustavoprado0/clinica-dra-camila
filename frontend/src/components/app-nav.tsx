@@ -2,7 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Calendar, Users, LogOut } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  Stethoscope,
+  LogOut,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -10,6 +16,7 @@ const links = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/agenda', label: 'Agenda', icon: Calendar },
   { href: '/pacientes', label: 'Pacientes', icon: Users },
+  { href: '/procedimentos', label: 'Procedimentos', icon: Stethoscope },
 ];
 
 export function AppNav() {
