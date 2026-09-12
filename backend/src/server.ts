@@ -5,6 +5,8 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import { prisma } from './lib/prisma';
 import { authRoutes } from './routes/auth.routes';
+import { patientsRoutes } from './routes/patients.routes';
+import { requireAuth } from './lib/auth';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -46,6 +48,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/patients', requireAuth, patientsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
