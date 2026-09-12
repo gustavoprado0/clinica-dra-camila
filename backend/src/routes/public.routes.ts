@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { buildConfirmationMessage, sendWhatsApp } from '../utils/whatsapp';
+import { formatDateBR, formatTimeBR } from '../utils/datetime';
 
 export const publicRoutes = Router();
 
@@ -136,8 +137,8 @@ publicRoutes.post('/book', async (req, res) => {
     include: { patient: true, procedure: true },
   });
 
-  const dateStr = dt.toLocaleDateString('pt-BR');
-  const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = formatDateBR(dt);
+  const timeStr = formatTimeBR(dt);
 
   const body = buildConfirmationMessage({
     patientName: appointment.patient.name,

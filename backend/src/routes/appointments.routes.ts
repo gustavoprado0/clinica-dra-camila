@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { buildConfirmationMessage, sendWhatsApp } from '../utils/whatsapp';
+import { formatDateBR, formatTimeBR } from '../utils/datetime';
 
 export const appointmentsRoutes = Router();
 
@@ -95,8 +96,8 @@ appointmentsRoutes.post('/', async (req, res) => {
 
   if (shouldSend) {
     const dt = new Date(appointment.scheduledAt);
-    const dateStr = dt.toLocaleDateString('pt-BR');
-    const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = formatDateBR(dt);
+    const timeStr = formatTimeBR(dt);
 
     const body = buildConfirmationMessage({
       patientName: appointment.patient.name,
@@ -171,11 +172,8 @@ appointmentsRoutes.patch('/:id/status', async (req, res) => {
     // Se está confirmando e quer enviar WhatsApp, envia
     if (shouldSend && status === 'CONFIRMED') {
       const dt = new Date(updated.scheduledAt);
-      const dateStr = dt.toLocaleDateString('pt-BR');
-      const timeStr = dt.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const dateStr = formatDateBR(dt);
+      const timeStr = formatTimeBR(dt);
 
       const body = buildConfirmationMessage({
         patientName: updated.patient.name,
@@ -215,8 +213,8 @@ appointmentsRoutes.post('/:id/resend-whatsapp', async (req, res) => {
     if (!apt) return res.status(404).json({ error: 'Agendamento não encontrado' });
 
     const dt = new Date(apt.scheduledAt);
-    const dateStr = dt.toLocaleDateString('pt-BR');
-    const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = formatDateBR(dt);
+    const timeStr = formatTimeBR(dt);
 
     const body = buildConfirmationMessage({
       patientName: apt.patient.name,
