@@ -24,4 +24,4 @@ databases:
     plan: free
     region: oregon
     databaseName: clinica_camila
-    user: postgres
+    user: camila_admin
