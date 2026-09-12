@@ -2,22 +2,50 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Calendar as CalendarIcon,
+} from 'lucide-react';
 import { api } from '@/lib/api';
-import type { Patient } from '@/lib/types';
+import type { Patient, Appointment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { PatientDialog } from '@/components/patient-dialog';
+
+interface PatientWithHistory extends Patient {
+  appointments?: Appointment[];
+}
 
 export default function PatientsPage() {
   const router = useRouter();
@@ -26,16 +54,15 @@ export default function PatientsPage() {
   const [query, setQuery] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [editing, setEditing] = useState<Patient | null>(null);
+  const [deleting, setDeleting] = useState<Patient | null>(null);
 
-  const [form, setForm] = useState({
-    name: '',
-    whatsapp: '',
-    cpf: '',
-    birthDate: '',
-    notes: '',
-  });
+  const [historyPatient, setHistoryPatient] = useState<PatientWithHistory | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,31 +83,43 @@ export default function PatientsPage() {
     load();
   }, [load]);
 
-  function resetForm() {
-    setForm({ name: '', whatsapp: '', cpf: '', birthDate: '', notes: '' });
-    setFormError('');
+  function openCreate() {
+    setEditing(null);
+    setDialogOpen(true);
   }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setFormError('');
+  function openEdit(p: Patient) {
+    setEditing(p);
+    setDialogOpen(true);
+  }
 
+  async function openHistory(p: Patient) {
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryPatient(p);
     try {
-      await api.post('/api/patients', {
-        name: form.name,
-        whatsapp: form.whatsapp,
-        cpf: form.cpf || null,
-        birthDate: form.birthDate || null,
-        notes: form.notes || null,
-      });
-      setDialogOpen(false);
-      resetForm();
+      const data = await api.get<PatientWithHistory>(`/api/patients/${p.id}`);
+      setHistoryPatient(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar histórico');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleting) return;
+    setBusyId(deleting.id);
+    setError('');
+    try {
+      await api.delete(`/api/patients/${deleting.id}`);
+      setDeleting(null);
       await load();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Erro ao salvar');
+      setError(err instanceof Error ? err.message : 'Erro ao excluir');
+      setDeleting(null);
     } finally {
-      setSaving(false);
+      setBusyId(null);
     }
   }
 
@@ -93,8 +132,7 @@ export default function PatientsPage() {
             Gerencie os pacientes da clínica
           </p>
         </div>
-
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={openCreate}>
           <Plus className="size-4" />
           Novo paciente
         </Button>
@@ -109,6 +147,12 @@ export default function PatientsPage() {
           className="pl-9"
         />
       </div>
+
+      {error && (
+        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+          {error}
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -127,7 +171,11 @@ export default function PatientsPage() {
               <div key={p.id}>
                 {i > 0 && <Separator />}
                 <div className="px-5 py-4 flex items-center justify-between hover:bg-muted/40 transition">
-                  <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => openHistory(p)}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
                     <div className="size-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
                       {p.name
                         .split(' ')
@@ -142,7 +190,34 @@ export default function PatientsPage() {
                         {p.whatsapp}
                       </p>
                     </div>
-                  </div>
+                  </button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className="size-9 inline-flex items-center justify-center rounded-md hover:bg-muted transition disabled:opacity-50"
+                      disabled={busyId === p.id}
+                    >
+                      <MoreVertical className="size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => openEdit(p)}>
+                        <Pencil className="size-4" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openHistory(p)}>
+                        <CalendarIcon className="size-4" />
+                        Ver histórico
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setDeleting(p)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))
@@ -150,91 +225,103 @@ export default function PatientsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Novo paciente</DialogTitle>
-            <DialogDescription>
-              Cadastre um novo paciente
+      <PatientDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        editing={editing}
+        onSaved={load}
+      />
+
+      <AlertDialog
+        open={!!deleting}
+        onOpenChange={(v) => !v && setDeleting(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir paciente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleting?.name}</strong>?
+              Todos os agendamentos desse paciente também serão removidos.
+              Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden max-h-[80vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/30 shrink-0">
+            <DialogTitle className="text-xl">
+              Histórico de {historyPatient?.name}
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {historyPatient?.whatsapp}
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">WhatsApp *</Label>
-              <Input
-                id="whatsapp"
-                placeholder="(11) 99999-9999"
-                value={form.whatsapp}
-                onChange={(e) =>
-                  setForm({ ...form, whatsapp: e.target.value })
-                }
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cpf">CPF</Label>
-              <Input
-                id="cpf"
-                value={form.cpf}
-                onChange={(e) => setForm({ ...form, cpf: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="birthDate">Data de nascimento</Label>
-              <Input
-                id="birthDate"
-                type="date"
-                value={form.birthDate}
-                onChange={(e) =>
-                  setForm({ ...form, birthDate: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Observações</Label>
-              <Input
-                id="notes"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              />
-            </div>
-
-            {formError && (
-              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
-                {formError}
+          <div className="overflow-y-auto flex-1">
+            {historyLoading ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                Carregando...
+              </div>
+            ) : !historyPatient?.appointments ||
+              historyPatient.appointments.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                Nenhum agendamento registrado.
+              </div>
+            ) : (
+              <div>
+                {historyPatient.appointments.map((apt, i) => (
+                  <div key={apt.id}>
+                    {i > 0 && <Separator />}
+                    <div className="px-6 py-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {apt.procedure?.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(apt.scheduledAt).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: 'long',
+                            year: 'numeric',
+                          })}{' '}
+                          às{' '}
+                          {new Date(apt.scheduledAt).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                      <StatusBadge status={apt.status} />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-                disabled={saving}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Salvando...' : 'Salvar paciente'}
-              </Button>
-            </DialogFooter>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; className: string }> = {
+    PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 hover:bg-amber-100' },
+    CONFIRMED: { label: 'Confirmada', className: 'bg-green-100 text-green-800 hover:bg-green-100' },
+    CANCELLED: { label: 'Cancelada', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
+    DONE: { label: 'Concluída', className: 'bg-gray-100 text-gray-700 hover:bg-gray-100' },
+  };
+  const info =
+    map[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
+  return <Badge className={info.className}>{info.label}</Badge>;
 }
