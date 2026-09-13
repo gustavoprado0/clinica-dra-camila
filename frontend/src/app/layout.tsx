@@ -1,23 +1,25 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans, Inter } from 'next/font/google';
 import './globals.css';
-import { cn } from "@/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const jakarta = Plus_Jakarta_Sans({
+  variable: '--font-heading',
   subsets: ['latin'],
+  display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const inter = Inter({
+  variable: '--font-sans',
   subsets: ['latin'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
   title: 'Clínica Dra. Camila',
   description: 'Sistema de agendamento e gestão',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
@@ -28,9 +30,9 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
+      className={`${jakarta.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
 }

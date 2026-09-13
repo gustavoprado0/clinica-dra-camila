@@ -11,7 +11,6 @@ import {
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 const links = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -34,18 +33,26 @@ export function AppNav() {
   }
 
   return (
-    <nav className="flex flex-col w-56 min-h-screen border-r bg-background">
-      <div className="px-5 py-5 border-b">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🦷</span>
-          <div>
-            <p className="text-sm font-semibold">Dra. Camila</p>
-            <p className="text-xs text-muted-foreground">Painel da clínica</p>
+    <nav className="flex flex-col w-60 min-h-screen bg-sidebar text-sidebar-foreground">
+      {/* Logo / Header */}
+      <div className="px-5 py-6 border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-sidebar-primary/10 flex items-center justify-center">
+            <span className="text-xl">🦷</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight text-white">
+              Dra. Camila
+            </p>
+            <p className="text-xs text-sidebar-foreground/60 leading-tight">
+              Painel da clínica
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 py-3">
+      {/* Links principais */}
+      <div className="flex-1 py-4 px-3 space-y-1">
         {links.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
           return (
@@ -53,42 +60,42 @@ export function AppNav() {
               key={href}
               href={href}
               className={cn(
-                'flex items-center gap-3 mx-2 px-3 py-2 rounded-md text-sm transition',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                 active
-                  ? 'bg-muted text-foreground font-medium'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'bg-sidebar-accent text-white font-medium shadow-sm'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white'
               )}
             >
-              <Icon className="size-4" />
+              <Icon className="size-[18px]" />
               {label}
             </Link>
           );
         })}
       </div>
 
-      <div className="border-t p-3 space-y-1">
+      {/* Footer — Configurações + Sair */}
+      <div className="border-t border-sidebar-border p-3 space-y-1">
         <Link
           href="/configuracoes"
           className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
             pathname.startsWith('/configuracoes')
-              ? 'bg-muted text-foreground font-medium'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              ? 'bg-sidebar-accent text-white font-medium shadow-sm'
+              : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white'
           )}
         >
-          <Settings className="size-4" />
+          <Settings className="size-[18px]" />
           Configurações
         </Link>
 
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
+          type="button"
           onClick={handleLogout}
-          className="w-full justify-start gap-3 text-muted-foreground"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white transition-all"
         >
-          <LogOut className="size-4" />
+          <LogOut className="size-[18px]" />
           Sair
-        </Button>
+        </button>
       </div>
     </nav>
   );
