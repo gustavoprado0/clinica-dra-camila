@@ -3,11 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Save, Clock, CalendarCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -42,8 +49,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
 
   const [openHour, setOpenHour] = useState(8);
   const [closeHour, setCloseHour] = useState(19);
@@ -67,12 +72,6 @@ export default function SettingsPage() {
     load();
   }, [router]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   function toggleWeekday(day: number) {
     setWeekdays((current) =>
       current.includes(day)
@@ -82,13 +81,12 @@ export default function SettingsPage() {
   }
 
   async function handleSave() {
-    setError('');
     if (weekdays.length === 0) {
-      setError('Escolha pelo menos um dia de funcionamento');
+      toast.error('Escolha pelo menos um dia de funcionamento');
       return;
     }
     if (openHour >= closeHour) {
-      setError('Horário de abertura deve ser antes do fechamento');
+      toast.error('Horário de abertura deve ser antes do fechamento');
       return;
     }
 
@@ -100,9 +98,9 @@ export default function SettingsPage() {
         slotMinutes,
         weekdays: weekdays.join(','),
       });
-      setToast('Configurações salvas com sucesso');
+      toast.success('Configurações salvas com sucesso');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar');
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar');
     } finally {
       setSaving(false);
     }
@@ -110,33 +108,46 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        <div>
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <Skeleton className="h-6 w-40 mb-4" />
+            <div className="flex flex-wrap gap-2">
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-10 w-16 rounded-lg" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <Skeleton className="h-6 w-32 mb-2" />
+            <div className="grid grid-cols-2 gap-4">
+              <Skeleton className="h-11" />
+              <Skeleton className="h-11" />
+            </div>
+            <Skeleton className="h-11" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-8 space-y-6">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Configurações</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold">Configurações</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Defina os horários e dias de funcionamento da clínica
         </p>
       </div>
 
-      {toast && (
-        <div className="text-sm bg-green-50 border border-green-200 text-green-800 rounded-md px-4 py-2.5">
-          {toast}
-        </div>
-      )}
-
-      {error && (
-        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-4 py-2.5">
-          {error}
-        </div>
-      )}
-
+      {/* Dias de funcionamento */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -159,7 +170,7 @@ export default function SettingsPage() {
                   onClick={() => toggleWeekday(opt.value)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
                     active
-                      ? 'bg-primary text-primary-foreground border-primary'
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                       : 'bg-background text-muted-foreground border-border hover:bg-muted'
                   }`}
                 >
@@ -171,6 +182,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Horários */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -178,18 +190,19 @@ export default function SettingsPage() {
             Horários
           </CardTitle>
           <CardDescription>
-            Defina o horário de abertura, fechamento e o intervalo entre consultas.
+            Defina o horário de abertura, fechamento e o intervalo entre
+            consultas.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Abre às</Label>
               <Select
                 value={String(openHour)}
                 onValueChange={(v) => setOpenHour(Number(v))}
               >
-                <SelectTrigger className="h-11">
+                <SelectTrigger className="h-11 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -208,7 +221,7 @@ export default function SettingsPage() {
                 value={String(closeHour)}
                 onValueChange={(v) => setCloseHour(Number(v))}
               >
-                <SelectTrigger className="h-11">
+                <SelectTrigger className="h-11 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -228,7 +241,7 @@ export default function SettingsPage() {
               value={String(slotMinutes)}
               onValueChange={(v) => setSlotMinutes(Number(v))}
             >
-              <SelectTrigger className="h-11">
+              <SelectTrigger className="h-11 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -246,8 +259,13 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Ação */}
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving} className="min-w-[140px]">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="min-w-[160px] h-11 gap-2"
+        >
           {saving ? (
             <>
               <Loader2 className="size-4 animate-spin" />
