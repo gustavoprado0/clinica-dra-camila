@@ -1,96 +1,189 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Users,
+  TrendingUp,
+  CalendarX,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { DashboardSummary } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/empty-state';
+import { StatCardSkeleton, ListItemSkeleton } from '@/components/skeleton-card';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const s = await api.get<DashboardSummary>('/api/dashboard/summary');
-        setSummary(s);
-      } catch {
-        router.push('/login');
-      } finally {
-        setLoading(false);
-      }
+  const load = useCallback(async () => {
+    try {
+      const s = await api.get<DashboardSummary>('/api/dashboard/summary');
+      setSummary(s);
+    } catch (err) {
+      toast.error('Erro ao carregar dashboard');
+      router.push('/login');
+    } finally {
+      setLoading(false);
     }
-    load();
   }, [router]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Carregando...</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const stats = summary?.stats || { totalToday: 0, confirmed: 0, pending: 0 };
   const today = summary?.today || [];
 
+  const todayFormatted = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+  });
+
   return (
-    <div className="max-w-5xl mx-auto px-8 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Visão geral do dia
+        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+        <p className="text-sm text-muted-foreground capitalize mt-1">
+          {todayFormatted}
         </p>
       </div>
 
+      {/* Stats */}
       <section>
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
           Hoje
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard label="Consultas" value={stats.totalToday} accent="text-blue-600" />
-          <StatCard label="Confirmadas" value={stats.confirmed} accent="text-green-600" />
-          <StatCard label="Pendentes" value={stats.pending} accent="text-amber-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          {loading ? (
+            <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </>
+          ) : (
+            <>
+              <StatCard
+                label="Consultas"
+                value={stats.totalToday}
+                icon={Calendar}
+                accent="text-blue-600 bg-blue-50"
+              />
+              <StatCard
+                label="Confirmadas"
+                value={stats.confirmed}
+                icon={CheckCircle2}
+                accent="text-emerald-600 bg-emerald-50"
+              />
+              <StatCard
+                label="Pendentes"
+                value={stats.pending}
+                icon={Clock}
+                accent="text-amber-600 bg-amber-50"
+              />
+            </>
+          )}
         </div>
       </section>
 
+      {/* Agenda de hoje */}
       <section>
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-          Agenda de hoje
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Agenda de hoje
+          </h2>
+          {!loading && today.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/agenda')}
+              className="text-xs h-7"
+            >
+              Ver agenda completa
+            </Button>
+          )}
+        </div>
+
         <Card>
           <CardContent className="p-0">
-            {today.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">
-                Nenhuma consulta agendada para hoje.
-              </div>
+            {loading ? (
+              <>
+                <ListItemSkeleton />
+                <ListItemSkeleton />
+                <ListItemSkeleton />
+              </>
+            ) : today.length === 0 ? (
+              <EmptyState
+                icon={CalendarX}
+                title="Nenhuma consulta agendada"
+                description="Quando você agendar uma consulta, ela aparece aqui."
+                action={
+                  <Button
+                    size="sm"
+                    onClick={() => router.push('/agenda')}
+                    className="mt-2"
+                  >
+                    Ir para agenda
+                  </Button>
+                }
+              />
             ) : (
-              today.map((apt, i) => (
-                <div key={apt.id}>
-                  {i > 0 && <Separator />}
-                  <div className="px-5 py-4 flex items-center justify-between hover:bg-muted/40 transition">
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm font-medium w-14">
-                        {new Date(apt.scheduledAt).toLocaleTimeString('pt-BR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+              <div className="divide-y">
+                {today.map((apt) => {
+                  const time = new Date(apt.scheduledAt).toLocaleTimeString(
+                    'pt-BR',
+                    { hour: '2-digit', minute: '2-digit' }
+                  );
+                  const initials = (apt.patient?.name ?? '?')
+                    .split(' ')
+                    .map((n) => n[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase();
+
+                  return (
+                    <div
+                      key={apt.id}
+                      className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 hover:bg-muted/40 transition"
+                    >
+                      {/* Hora */}
+                      <div className="flex flex-col items-center justify-center w-14 shrink-0">
+                        <span className="text-sm font-semibold text-foreground">
+                          {time}
+                        </span>
                       </div>
-                      <div>
-                        <p className="font-medium">{apt.patient?.name}</p>
-                        <p className="text-sm text-muted-foreground">
+
+                      {/* Avatar */}
+                      <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold shrink-0">
+                        {initials}
+                      </div>
+
+                      {/* Infos */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">
+                          {apt.patient?.name}
+                        </p>
+                        <p className="text-sm text-muted-foreground truncate">
                           {apt.procedure?.name}
                         </p>
                       </div>
+
+                      {/* Status */}
+                      <StatusBadge status={apt.status} />
                     </div>
-                    <StatusBadge status={apt.status} />
-                  </div>
-                </div>
-              ))
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -102,17 +195,28 @@ export default function DashboardPage() {
 function StatCard({
   label,
   value,
+  icon: Icon,
   accent,
 }: {
   label: string;
   value: number;
+  icon: React.ElementType;
   accent: string;
 }) {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <p className={`text-3xl font-bold ${accent}`}>{value}</p>
-        <p className="text-sm text-muted-foreground mt-1">{label}</p>
+    <Card className="overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-3xl font-bold text-foreground">{value}</p>
+            <p className="text-sm text-muted-foreground mt-1">{label}</p>
+          </div>
+          <div
+            className={`size-10 rounded-lg flex items-center justify-center ${accent}`}
+          >
+            <Icon className="size-5" />
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -120,12 +224,26 @@ function StatCard({
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 hover:bg-amber-100' },
-    CONFIRMED: { label: 'Confirmada', className: 'bg-green-100 text-green-800 hover:bg-green-100' },
-    CANCELLED: { label: 'Cancelada', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
-    DONE: { label: 'Concluída', className: 'bg-gray-100 text-gray-700 hover:bg-gray-100' },
+    PENDING: {
+      label: 'Pendente',
+      className: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
+    },
+    CONFIRMED: {
+      label: 'Confirmada',
+      className: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100',
+    },
+    CANCELLED: {
+      label: 'Cancelada',
+      className: 'bg-red-100 text-red-800 hover:bg-red-100',
+    },
+    DONE: {
+      label: 'Concluída',
+      className: 'bg-gray-100 text-gray-700 hover:bg-gray-100',
+    },
   };
-  const info =
-    map[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
+  const info = map[status] || {
+    label: status,
+    className: 'bg-gray-100 text-gray-700',
+  };
   return <Badge className={info.className}>{info.label}</Badge>;
 }

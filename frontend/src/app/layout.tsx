@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans, Inter } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 
 const jakarta = Plus_Jakarta_Sans({
@@ -32,7 +33,20 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${jakarta.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        {children}
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          toastOptions={{
+            duration: 4000,
+            style: {
+              fontFamily: 'var(--font-sans)',
+            },
+          }}
+        />
+      </body>
     </html>
   );
 }
