@@ -2,14 +2,25 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Pencil, Trash2, Power, Clock, DollarSign } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Power,
+  Clock,
+  DollarSign,
+  Stethoscope,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { Procedure } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { EmptyState } from '@/components/empty-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +43,6 @@ export default function ProceduresPage() {
   const [editing, setEditing] = useState<Procedure | null>(null);
   const [deleting, setDeleting] = useState<Procedure | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,12 +73,12 @@ export default function ProceduresPage() {
 
   async function handleToggle(p: Procedure) {
     setBusyId(p.id);
-    setError('');
     try {
       await api.patch(`/api/procedures/${p.id}/toggle`, {});
+      toast.success(p.active ? `${p.name} desativado` : `${p.name} ativado`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao alterar');
+      toast.error(err instanceof Error ? err.message : 'Erro ao alterar');
     } finally {
       setBusyId(null);
     }
@@ -77,13 +87,13 @@ export default function ProceduresPage() {
   async function handleDelete() {
     if (!deleting) return;
     setBusyId(deleting.id);
-    setError('');
     try {
       await api.delete(`/api/procedures/${deleting.id}`);
+      toast.success(`${deleting.name} foi excluído`);
       setDeleting(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao excluir');
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir');
       setDeleting(null);
     } finally {
       setBusyId(null);
@@ -91,21 +101,22 @@ export default function ProceduresPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Procedimentos</h1>
-          <p className="text-sm text-muted-foreground">
-            Gerencie os procedimentos oferecidos pela clínica
+          <h1 className="text-2xl sm:text-3xl font-bold">Procedimentos</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gerencie os procedimentos da clínica
           </p>
         </div>
-
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="gap-1.5">
           <Plus className="size-4" />
           Novo procedimento
         </Button>
       </div>
 
+      {/* Filtro */}
       <div className="flex items-center gap-2">
         <Switch
           id="show-inactive"
@@ -114,57 +125,70 @@ export default function ProceduresPage() {
         />
         <label
           htmlFor="show-inactive"
-          className="text-sm text-muted-foreground cursor-pointer"
+          className="text-sm text-muted-foreground cursor-pointer select-none"
         >
           Mostrar inativos
         </label>
       </div>
 
-      {error && (
-        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
-          {error}
-        </div>
-      )}
-
+      {/* Lista */}
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              Carregando procedimentos...
+            <div className="divide-y">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 px-5 py-4">
+                  <Skeleton className="size-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-1/4" />
+                  </div>
+                  <Skeleton className="size-9" />
+                  <Skeleton className="size-9" />
+                </div>
+              ))}
             </div>
           ) : procedures.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              Nenhum procedimento cadastrado ainda.
-            </div>
+            <EmptyState
+              icon={Stethoscope}
+              title="Nenhum procedimento cadastrado"
+              description="Cadastre os procedimentos oferecidos pela clínica."
+              action={
+                <Button onClick={openCreate} size="sm" className="mt-2 gap-1.5">
+                  <Plus className="size-4" />
+                  Novo procedimento
+                </Button>
+              }
+            />
           ) : (
             procedures.map((p, i) => (
               <div key={p.id}>
                 {i > 0 && <Separator />}
                 <div
-                  className={`px-5 py-4 flex items-center justify-between transition ${
-                    p.active ? 'hover:bg-muted/40' : 'bg-muted/20 opacity-70'
+                  className={`px-4 sm:px-5 py-4 flex items-center justify-between transition ${
+                    p.active ? 'hover:bg-muted/40' : 'bg-muted/20 opacity-75'
                   }`}
                 >
-                  <div className="flex items-center gap-4 flex-1">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                     <div
-                      className={`size-10 rounded-full flex items-center justify-center text-sm font-medium ${
+                      className={`size-10 rounded-full flex items-center justify-center shrink-0 ${
                         p.active
-                          ? 'bg-blue-100 text-blue-700'
+                          ? 'bg-primary/10 text-primary'
                           : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       <Power className="size-4" />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium">{p.name}</p>
+                        <p className="font-medium truncate">{p.name}</p>
                         {!p.active && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs shrink-0">
                             Inativo
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-0.5">
+                      <div className="flex items-center gap-3 sm:gap-4 text-xs text-muted-foreground mt-0.5">
                         <span className="flex items-center gap-1">
                           <Clock className="size-3" />
                           {p.durationMin}min
@@ -177,7 +201,7 @@ export default function ProceduresPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -218,7 +242,10 @@ export default function ProceduresPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         editing={editing}
-        onSaved={load}
+        onSaved={() => {
+          toast.success(editing ? 'Procedimento atualizado' : 'Procedimento criado');
+          load();
+        }}
       />
 
       <AlertDialog
