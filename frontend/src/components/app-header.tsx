@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, LogOut, ChevronRight, User } from 'lucide-react';
+import { Bell, LogOut, ChevronRight, User, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useUIStore } from '@/lib/ui-store';
 
 const routeLabels: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -23,19 +24,20 @@ export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const [userName, setUserName] = useState('Dra. Camila');
+  const { toggleSidebar, setMobileMenuOpen } = useUIStore();
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/auth/me`,
-          { credentials: 'include' }
-        );
+        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        const res = await fetch(`${API}/api/auth/me`, {
+          credentials: 'include',
+        });
         if (!res.ok) return;
         const data = await res.json();
         if (data.user?.name) setUserName(data.user.name);
       } catch {
-        // ignora — mantém nome padrão
+        // ignora
       }
     }
     load();
@@ -64,18 +66,40 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 lg:px-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="hidden sm:inline text-muted-foreground">
-          Dra. Camila
-        </span>
-        <ChevronRight className="hidden sm:inline size-4 text-muted-foreground/50" />
-        <span className="font-medium text-foreground">{currentLabel}</span>
+      {/* Esquerda — Menu toggle + breadcrumb */}
+      <div className="flex items-center gap-3">
+        {/* Botão desktop (colapsa sidebar) */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="hidden lg:inline-flex size-9 items-center justify-center rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground"
+          title="Alternar sidebar"
+        >
+          <Menu className="size-[18px]" />
+        </button>
+
+        {/* Botão mobile (abre drawer) */}
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(true)}
+          className="lg:hidden size-9 inline-flex items-center justify-center rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground"
+          title="Abrir menu"
+        >
+          <Menu className="size-[18px]" />
+        </button>
+
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm">
+          <span className="hidden sm:inline text-muted-foreground">
+            Dra. Camila
+          </span>
+          <ChevronRight className="hidden sm:inline size-4 text-muted-foreground/50" />
+          <span className="font-medium text-foreground">{currentLabel}</span>
+        </div>
       </div>
 
-      {/* Ações à direita */}
+      {/* Direita — Notificações + User */}
       <div className="flex items-center gap-1 sm:gap-2">
-        {/* Notificações (placeholder) */}
         <button
           type="button"
           className="size-9 inline-flex items-center justify-center rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground"
@@ -84,7 +108,6 @@ export function AppHeader() {
           <Bell className="size-[18px]" />
         </button>
 
-        {/* Menu do usuário */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg hover:bg-muted transition">
             <div className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">

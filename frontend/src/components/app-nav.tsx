@@ -11,6 +11,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/lib/ui-store';
 
 const links = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -19,7 +20,14 @@ const links = [
   { href: '/procedimentos', label: 'Procedimentos', icon: Stethoscope },
 ];
 
-export function AppNav() {
+interface AppNavProps {
+  /** Se true, mostra só ícones (desktop colapsado) */
+  collapsed?: boolean;
+  /** Callback chamado quando um link é clicado (pra fechar drawer mobile) */
+  onNavigate?: () => void;
+}
+
+export function AppNav({ collapsed = false, onNavigate }: AppNavProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -32,22 +40,38 @@ export function AppNav() {
     router.refresh();
   }
 
+  function handleLinkClick() {
+    onNavigate?.();
+  }
+
   return (
-    <nav className="flex flex-col w-60 min-h-screen bg-sidebar text-sidebar-foreground">
+    <nav
+      className={cn(
+        'flex flex-col min-h-screen bg-sidebar text-sidebar-foreground transition-all duration-200',
+        collapsed ? 'w-[68px]' : 'w-60'
+      )}
+    >
       {/* Logo / Header */}
-      <div className="px-5 py-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-sidebar-primary/10 flex items-center justify-center">
+      <div
+        className={cn(
+          'border-b border-sidebar-border transition-all',
+          collapsed ? 'px-3 py-6' : 'px-5 py-6'
+        )}
+      >
+        <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
+          <div className="size-10 shrink-0 rounded-xl bg-sidebar-primary/10 flex items-center justify-center">
             <span className="text-xl">🦷</span>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-tight text-white">
-              Dra. Camila
-            </p>
-            <p className="text-xs text-sidebar-foreground/60 leading-tight">
-              Painel da clínica
-            </p>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-tight text-white">
+                Dra. Camila
+              </p>
+              <p className="text-xs text-sidebar-foreground/60 leading-tight">
+                Painel da clínica
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -59,15 +83,18 @@ export function AppNav() {
             <Link
               key={href}
               href={href}
+              onClick={handleLinkClick}
+              title={collapsed ? label : undefined}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                'flex items-center gap-3 rounded-lg text-sm transition-all',
+                collapsed ? 'justify-center px-3 py-2.5' : 'px-3 py-2.5',
                 active
                   ? 'bg-sidebar-accent text-white font-medium shadow-sm'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white'
               )}
             >
-              <Icon className="size-[18px]" />
-              {label}
+              <Icon className="size-[18px] shrink-0" />
+              {!collapsed && <span className="truncate">{label}</span>}
             </Link>
           );
         })}
@@ -77,24 +104,31 @@ export function AppNav() {
       <div className="border-t border-sidebar-border p-3 space-y-1">
         <Link
           href="/configuracoes"
+          onClick={handleLinkClick}
+          title={collapsed ? 'Configurações' : undefined}
           className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+            'flex items-center gap-3 rounded-lg text-sm transition-all',
+            collapsed ? 'justify-center px-3 py-2.5' : 'px-3 py-2.5',
             pathname.startsWith('/configuracoes')
               ? 'bg-sidebar-accent text-white font-medium shadow-sm'
               : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white'
           )}
         >
-          <Settings className="size-[18px]" />
-          Configurações
+          <Settings className="size-[18px] shrink-0" />
+          {!collapsed && <span className="truncate">Configurações</span>}
         </Link>
 
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white transition-all"
+          title={collapsed ? 'Sair' : undefined}
+          className={cn(
+            'w-full flex items-center gap-3 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white transition-all',
+            collapsed ? 'justify-center px-3 py-2.5' : 'px-3 py-2.5'
+          )}
         >
-          <LogOut className="size-[18px]" />
-          Sair
+          <LogOut className="size-[18px] shrink-0" />
+          {!collapsed && <span className="truncate">Sair</span>}
         </button>
       </div>
     </nav>
