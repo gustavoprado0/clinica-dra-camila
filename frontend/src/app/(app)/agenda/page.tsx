@@ -12,13 +12,17 @@ import {
   Send,
   XCircle,
   MoreVertical,
+  CalendarX,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { Appointment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/empty-state';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,7 +63,6 @@ export default function AgendaPage() {
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
   const dateStr = useMemo(() => {
     const y = date.getFullYear();
@@ -85,12 +88,6 @@ export default function AgendaPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   function changeDay(delta: number) {
     const next = new Date(date);
@@ -122,14 +119,14 @@ export default function AgendaPage() {
         `/api/appointments/${apt.id}/status`,
         { status: 'CONFIRMED', sendWhatsApp: true }
       );
-      setToast(
+      toast.success(
         res.whatsappStatus
           ? `WhatsApp enviado para ${apt.patient?.name}`
           : 'Agendamento confirmado'
       );
       await load();
     } catch (err) {
-      setToast(err instanceof Error ? err.message : 'Erro');
+      toast.error(err instanceof Error ? err.message : 'Erro');
     } finally {
       setBusyId(null);
     }
@@ -139,9 +136,9 @@ export default function AgendaPage() {
     setBusyId(apt.id);
     try {
       await api.post(`/api/appointments/${apt.id}/resend-whatsapp`, {});
-      setToast(`WhatsApp reenviado para ${apt.patient?.name}`);
+      toast.success(`WhatsApp reenviado para ${apt.patient?.name}`);
     } catch (err) {
-      setToast(err instanceof Error ? err.message : 'Erro ao reenviar');
+      toast.error(err instanceof Error ? err.message : 'Erro ao reenviar');
     } finally {
       setBusyId(null);
     }
@@ -158,15 +155,15 @@ export default function AgendaPage() {
           status: 'CANCELLED',
           sendWhatsApp: false,
         });
-        setToast('Agendamento cancelado');
+        toast.success('Agendamento cancelado');
       } else {
         await api.delete(`/api/appointments/${appointment.id}`);
-        setToast('Agendamento excluído');
+        toast.success('Agendamento excluído');
       }
       setConfirmAction(null);
       await load();
     } catch (err) {
-      setToast(err instanceof Error ? err.message : 'Erro');
+      toast.error(err instanceof Error ? err.message : 'Erro');
     } finally {
       setBusyId(null);
     }
@@ -178,11 +175,12 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Agenda</h1>
-          <p className="text-sm text-muted-foreground capitalize">
+          <h1 className="text-2xl sm:text-3xl font-bold">Agenda</h1>
+          <p className="text-sm text-muted-foreground capitalize mt-1">
             {date.toLocaleDateString('pt-BR', {
               weekday: 'long',
               day: '2-digit',
@@ -191,7 +189,8 @@ export default function AgendaPage() {
             })}
           </p>
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={goToday}>
             Hoje
           </Button>
@@ -201,25 +200,45 @@ export default function AgendaPage() {
           <Button variant="outline" size="icon" onClick={() => changeDay(1)}>
             <ChevronRight className="size-4" />
           </Button>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)} className="gap-1.5">
             <Plus className="size-4" />
-            Novo agendamento
+            <span className="hidden sm:inline">Novo agendamento</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>
 
-      {toast && (
-        <div className="text-sm bg-green-50 border border-green-200 text-green-800 rounded-md px-4 py-2.5">
-          {toast}
-        </div>
-      )}
-
+      {/* Agenda */}
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              Carregando agenda...
+            <div className="divide-y">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-4">
+                  <Skeleton className="h-4 w-12" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-1/4" />
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : appointments.length === 0 ? (
+            <EmptyState
+              icon={CalendarX}
+              title="Nenhuma consulta neste dia"
+              description="Aproveite! Ou crie um novo agendamento."
+              action={
+                <Button
+                  size="sm"
+                  onClick={() => setDialogOpen(true)}
+                  className="mt-2 gap-1.5"
+                >
+                  <Plus className="size-4" />
+                  Novo agendamento
+                </Button>
+              }
+            />
           ) : (
             hours.map((hour, idx) => {
               const apts = appointmentsAt(hour);
@@ -228,10 +247,10 @@ export default function AgendaPage() {
                 <div key={hour}>
                   {idx > 0 && <Separator />}
                   <div className="flex">
-                    <div className="w-20 px-5 py-4 text-sm text-muted-foreground border-r bg-muted/20">
+                    <div className="w-16 sm:w-20 px-3 sm:px-5 py-3 sm:py-4 text-sm text-muted-foreground border-r bg-muted/20 shrink-0">
                       {hh}:00
                     </div>
-                    <div className="flex-1 py-3 px-4">
+                    <div className="flex-1 py-3 px-3 sm:px-4">
                       {apts.length === 0 ? (
                         <div className="text-sm text-muted-foreground/60 italic">
                           Disponível
@@ -241,13 +260,13 @@ export default function AgendaPage() {
                           {apts.map((apt) => (
                             <div
                               key={apt.id}
-                              className="flex items-center justify-between bg-background border rounded-md px-3 py-2 gap-3"
+                              className="flex items-center justify-between bg-background border rounded-md px-3 py-2 gap-2 sm:gap-3"
                             >
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">
                                   {apt.patient?.name}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs text-muted-foreground truncate">
                                   {apt.procedure?.name} ·{' '}
                                   {new Date(apt.scheduledAt).toLocaleTimeString(
                                     'pt-BR',
@@ -267,7 +286,7 @@ export default function AgendaPage() {
                                     title="Confirmar e enviar WhatsApp"
                                     className="size-9 inline-flex items-center justify-center rounded-md hover:bg-muted transition disabled:opacity-50"
                                   >
-                                    <CheckCircle2 className="size-4 text-green-600" />
+                                    <CheckCircle2 className="size-4 text-emerald-600" />
                                   </button>
                                 )}
 
@@ -328,7 +347,10 @@ export default function AgendaPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         defaultDate={date}
-        onCreated={load}
+        onCreated={() => {
+          load();
+          toast.success('Agendamento criado');
+        }}
       />
 
       <AppointmentEditDialog
@@ -337,7 +359,7 @@ export default function AgendaPage() {
         appointment={editing}
         onSaved={() => {
           setEditOpen(false);
-          setToast('Agendamento atualizado');
+          toast.success('Agendamento atualizado');
           load();
         }}
       />
@@ -389,7 +411,7 @@ export default function AgendaPage() {
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
     PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 hover:bg-amber-100' },
-    CONFIRMED: { label: 'Confirmada', className: 'bg-green-100 text-green-800 hover:bg-green-100' },
+    CONFIRMED: { label: 'Confirmada', className: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' },
     CANCELLED: { label: 'Cancelada', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
     DONE: { label: 'Concluída', className: 'bg-gray-100 text-gray-700 hover:bg-gray-100' },
   };
