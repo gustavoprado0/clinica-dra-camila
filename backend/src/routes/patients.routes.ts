@@ -1,20 +1,33 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { normalizeCpf, normalizeWhatsapp, sanitizeText } from '../lib/sanitize';
 
 export const patientsRoutes = Router();
 
-const createSchema = z.object({
-  name: z.string().min(2),
-  whatsapp: z.string().min(8),
+const baseSchema = z.object({
+  name: z.string().min(2, 'Nome muito curto').max(120),
+  whatsapp: z.string().min(8, 'WhatsApp inválido'),
   cpf: z.string().optional().nullable(),
   birthDate: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 
-const updateSchema = createSchema.partial();
+const createSchema = baseSchema;
+const updateSchema = baseSchema.partial();
 
-// LISTAR (com busca opcional via ?q=)
+// Helper pra processar os dados
+function processInput(data: z.infer<typeof baseSchema>) {
+  const sanitized = {
+    name: sanitizeText(data.name, 120),
+    whatsapp: normalizeWhatsapp(data.whatsapp),
+    cpf: data.cpf ? normalizeCpf(data.cpf) : null,
+    notes: data.notes ? sanitizeText(data.notes, 500) : null,
+  };
+  return sanitized;
+}
+
+// LISTAR (com busca)
 patientsRoutes.get('/', async (req, res) => {
   const q = (req.query.q as string) || '';
 
@@ -38,16 +51,29 @@ patientsRoutes.get('/', async (req, res) => {
 patientsRoutes.post('/', async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+    return res.status(400).json({
+      error: 'Dados inválidos',
+      details: parsed.error.flatten(),
+    });
   }
 
-  const { birthDate, cpf, ...rest } = parsed.data;
+  const data = processInput(parsed.data);
+
+  if (!data.whatsapp) {
+    return res.status(400).json({
+      error: 'WhatsApp inválido. Use o formato (11) 99999-9999.',
+    });
+  }
+
+  const { birthDate } = parsed.data;
 
   try {
     const patient = await prisma.patient.create({
       data: {
-        ...rest,
-        cpf: cpf || null,
+        name: data.name,
+        whatsapp: data.whatsapp,
+        cpf: data.cpf,
+        notes: data.notes,
         birthDate: birthDate ? new Date(birthDate) : null,
       },
     });
@@ -60,7 +86,7 @@ patientsRoutes.post('/', async (req, res) => {
   }
 });
 
-// BUSCAR POR ID (com histórico de agendamentos)
+// BUSCAR POR ID
 patientsRoutes.get('/:id', async (req, res) => {
   const patient = await prisma.patient.findUnique({
     where: { id: req.params.id },
@@ -80,18 +106,35 @@ patientsRoutes.get('/:id', async (req, res) => {
 patientsRoutes.put('/:id', async (req, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+    return res.status(400).json({
+      error: 'Dados inválidos',
+      details: parsed.error.flatten(),
+    });
   }
 
-  const { birthDate, ...rest } = parsed.data;
+  const { birthDate, name, whatsapp, cpf, notes } = parsed.data;
+
+  const updateData: Record<string, unknown> = {};
+  if (name !== undefined) updateData.name = sanitizeText(name, 120);
+  if (whatsapp !== undefined) {
+    const normalized = normalizeWhatsapp(whatsapp);
+    if (!normalized) {
+      return res.status(400).json({
+        error: 'WhatsApp inválido. Use o formato (11) 99999-9999.',
+      });
+    }
+    updateData.whatsapp = normalized;
+  }
+  if (cpf !== undefined) updateData.cpf = cpf ? normalizeCpf(cpf) : null;
+  if (notes !== undefined)
+    updateData.notes = notes ? sanitizeText(notes, 500) : null;
+  if (birthDate !== undefined)
+    updateData.birthDate = birthDate ? new Date(birthDate) : null;
 
   try {
     const patient = await prisma.patient.update({
       where: { id: req.params.id },
-      data: {
-        ...rest,
-        birthDate: birthDate ? new Date(birthDate) : undefined,
-      },
+      data: updateData,
     });
     res.json(patient);
   } catch {
