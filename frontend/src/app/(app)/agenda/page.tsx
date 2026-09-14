@@ -13,6 +13,8 @@ import {
   XCircle,
   MoreVertical,
   CalendarX,
+  LayoutGrid,
+  CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -23,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { WeekView } from '@/components/week-view';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +49,7 @@ import { AppointmentEditDialog } from '@/components/appointment-edit-dialog';
 const START_HOUR = 8;
 const END_HOUR = 19;
 
+type ViewMode = 'day' | 'week';
 type ConfirmAction = {
   type: 'cancel' | 'delete';
   appointment: Appointment;
@@ -53,16 +57,30 @@ type ConfirmAction = {
 
 export default function AgendaPage() {
   const router = useRouter();
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [weekAppointments, setWeekAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(() => new Date());
+
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogDefaultDate, setDialogDefaultDate] = useState<Date | undefined>();
 
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Segunda-feira da semana atual
+  const weekStart = useMemo(() => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [date]);
 
   const dateStr = useMemo(() => {
     const y = date.getFullYear();
@@ -71,27 +89,41 @@ export default function AgendaPage() {
     return `${y}-${m}-${d}`;
   }, [date]);
 
+  const weekStartStr = useMemo(() => {
+    const y = weekStart.getFullYear();
+    const m = String(weekStart.getMonth() + 1).padStart(2, '0');
+    const d = String(weekStart.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, [weekStart]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await api.get<Appointment[]>(
-        `/api/appointments?date=${dateStr}`
-      );
-      setAppointments(list);
+      if (viewMode === 'day') {
+        const list = await api.get<Appointment[]>(
+          `/api/appointments?date=${dateStr}`
+        );
+        setAppointments(list);
+      } else {
+        const res = await api.get<{ appointments: Appointment[] }>(
+          `/api/appointments/week?start=${weekStartStr}`
+        );
+        setWeekAppointments(res.appointments);
+      }
     } catch {
       router.push('/login');
     } finally {
       setLoading(false);
     }
-  }, [dateStr, router]);
+  }, [viewMode, dateStr, weekStartStr, router]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  function changeDay(delta: number) {
+  function changeRange(delta: number) {
     const next = new Date(date);
-    next.setDate(next.getDate() + delta);
+    next.setDate(next.getDate() + (viewMode === 'day' ? delta : delta * 7));
     setDate(next);
   }
 
@@ -174,33 +206,83 @@ export default function AgendaPage() {
     setEditOpen(true);
   }
 
+  function openNewAt(d: Date, hour: number) {
+    const newDate = new Date(d);
+    newDate.setHours(hour, 0, 0, 0);
+    setDialogDefaultDate(newDate);
+    setDialogOpen(true);
+  }
+
+  function openNew() {
+    setDialogDefaultDate(date);
+    setDialogOpen(true);
+  }
+
+  const todayFormatted = date.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const weekFormatted = `${weekStart.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+  })} — ${new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString(
+    'pt-BR',
+    { day: '2-digit', month: 'short', year: 'numeric' }
+  )}`;
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Agenda</h1>
           <p className="text-sm text-muted-foreground capitalize mt-1">
-            {date.toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric',
-            })}
+            {viewMode === 'day' ? todayFormatted : weekFormatted}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Toggle dia/semana */}
+          <div className="flex items-center bg-muted rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('day')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                viewMode === 'day'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <CalendarDays className="size-4" />
+              <span className="hidden sm:inline">Dia</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('week')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                viewMode === 'week'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <LayoutGrid className="size-4" />
+              <span className="hidden sm:inline">Semana</span>
+            </button>
+          </div>
+
           <Button variant="outline" size="sm" onClick={goToday}>
             Hoje
           </Button>
-          <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
+          <Button variant="outline" size="icon" onClick={() => changeRange(-1)}>
             <ChevronLeft className="size-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={() => changeDay(1)}>
+          <Button variant="outline" size="icon" onClick={() => changeRange(1)}>
             <ChevronRight className="size-4" />
           </Button>
-          <Button onClick={() => setDialogOpen(true)} className="gap-1.5">
+          <Button onClick={openNew} className="gap-1.5">
             <Plus className="size-4" />
             <span className="hidden sm:inline">Novo agendamento</span>
             <span className="sm:hidden">Novo</span>
@@ -208,145 +290,171 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* Agenda */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="divide-y">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-4 px-4 py-4">
-                  <Skeleton className="h-4 w-12" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-3 w-1/4" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : appointments.length === 0 ? (
-            <EmptyState
-              icon={CalendarX}
-              title="Nenhuma consulta neste dia"
-              description="Aproveite! Ou crie um novo agendamento."
-              action={
-                <Button
-                  size="sm"
-                  onClick={() => setDialogOpen(true)}
-                  className="mt-2 gap-1.5"
-                >
-                  <Plus className="size-4" />
-                  Novo agendamento
-                </Button>
-              }
-            />
-          ) : (
-            hours.map((hour, idx) => {
-              const apts = appointmentsAt(hour);
-              const hh = String(hour).padStart(2, '0');
-              return (
-                <div key={hour}>
-                  {idx > 0 && <Separator />}
-                  <div className="flex">
-                    <div className="w-16 sm:w-20 px-3 sm:px-5 py-3 sm:py-4 text-sm text-muted-foreground border-r bg-muted/20 shrink-0">
-                      {hh}:00
+      {/* MODO DIA */}
+      {viewMode === 'day' && (
+        <Card>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="divide-y">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-4">
+                    <Skeleton className="h-4 w-12" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-3 w-1/4" />
                     </div>
-                    <div className="flex-1 py-3 px-3 sm:px-4">
-                      {apts.length === 0 ? (
-                        <div className="text-sm text-muted-foreground/60 italic">
-                          Disponível
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {apts.map((apt) => (
-                            <div
-                              key={apt.id}
-                              className="flex items-center justify-between bg-background border rounded-md px-3 py-2 gap-2 sm:gap-3"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                  {apt.patient?.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {apt.procedure?.name} ·{' '}
-                                  {new Date(apt.scheduledAt).toLocaleTimeString(
-                                    'pt-BR',
-                                    { hour: '2-digit', minute: '2-digit' }
+                  </div>
+                ))}
+              </div>
+            ) : appointments.length === 0 ? (
+              <EmptyState
+                icon={CalendarX}
+                title="Nenhuma consulta neste dia"
+                description="Aproveite! Ou crie um novo agendamento."
+                action={
+                  <Button size="sm" onClick={openNew} className="mt-2 gap-1.5">
+                    <Plus className="size-4" />
+                    Novo agendamento
+                  </Button>
+                }
+              />
+            ) : (
+              hours.map((hour, idx) => {
+                const apts = appointmentsAt(hour);
+                const hh = String(hour).padStart(2, '0');
+                return (
+                  <div key={hour}>
+                    {idx > 0 && <Separator />}
+                    <div className="flex">
+                      <div className="w-16 sm:w-20 px-3 sm:px-5 py-3 sm:py-4 text-sm text-muted-foreground border-r bg-muted/20 shrink-0">
+                        {hh}:00
+                      </div>
+                      <div className="flex-1 py-3 px-3 sm:px-4">
+                        {apts.length === 0 ? (
+                          <div className="text-sm text-muted-foreground/60 italic">
+                            Disponível
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {apts.map((apt) => (
+                              <div
+                                key={apt.id}
+                                className="flex items-center justify-between bg-background border rounded-md px-3 py-2 gap-2 sm:gap-3"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {apt.patient?.name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {apt.procedure?.name} ·{' '}
+                                    {new Date(apt.scheduledAt).toLocaleTimeString(
+                                      'pt-BR',
+                                      { hour: '2-digit', minute: '2-digit' }
+                                    )}
+                                  </p>
+                                </div>
+
+                                <StatusBadge status={apt.status} />
+
+                                <div className="flex items-center gap-1">
+                                  {apt.status !== 'CONFIRMED' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleConfirm(apt)}
+                                      disabled={busyId === apt.id}
+                                      title="Confirmar e enviar WhatsApp"
+                                      className="size-9 inline-flex items-center justify-center rounded-md hover:bg-muted transition disabled:opacity-50"
+                                    >
+                                      <CheckCircle2 className="size-4 text-emerald-600" />
+                                    </button>
                                   )}
-                                </p>
+
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                      className="size-9 inline-flex items-center justify-center rounded-md hover:bg-muted transition disabled:opacity-50 data-[popup-open]:bg-muted"
+                                      disabled={busyId === apt.id}
+                                    >
+                                      <MoreVertical className="size-4" />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-52">
+                                      <DropdownMenuItem onClick={() => openEdit(apt)}>
+                                        <Pencil className="size-4" />
+                                        Editar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleResend(apt)}
+                                      >
+                                        <Send className="size-4" />
+                                        Reenviar WhatsApp
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          setConfirmAction({
+                                            type: 'cancel',
+                                            appointment: apt,
+                                          })
+                                        }
+                                        disabled={apt.status === 'CANCELLED'}
+                                      >
+                                        <XCircle className="size-4" />
+                                        Cancelar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          setConfirmAction({
+                                            type: 'delete',
+                                            appointment: apt,
+                                          })
+                                        }
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="size-4" />
+                                        Excluir de vez
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               </div>
-
-                              <StatusBadge status={apt.status} />
-
-                              <div className="flex items-center gap-1">
-                                {apt.status !== 'CONFIRMED' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleConfirm(apt)}
-                                    disabled={busyId === apt.id}
-                                    title="Confirmar e enviar WhatsApp"
-                                    className="size-9 inline-flex items-center justify-center rounded-md hover:bg-muted transition disabled:opacity-50"
-                                  >
-                                    <CheckCircle2 className="size-4 text-emerald-600" />
-                                  </button>
-                                )}
-
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger
-                                    className="size-9 inline-flex items-center justify-center rounded-md hover:bg-muted transition disabled:opacity-50 data-[popup-open]:bg-muted"
-                                    disabled={busyId === apt.id}
-                                  >
-                                    <MoreVertical className="size-4" />
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-52">
-                                    <DropdownMenuItem onClick={() => openEdit(apt)}>
-                                      <Pencil className="size-4" />
-                                      Editar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handleResend(apt)}
-                                    >
-                                      <Send className="size-4" />
-                                      Reenviar WhatsApp
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        setConfirmAction({ type: 'cancel', appointment: apt })
-                                      }
-                                      disabled={apt.status === 'CANCELLED'}
-                                    >
-                                      <XCircle className="size-4" />
-                                      Cancelar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        setConfirmAction({ type: 'delete', appointment: apt })
-                                      }
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <Trash2 className="size-4" />
-                                      Excluir de vez
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* MODO SEMANA */}
+      {viewMode === 'week' && (
+        <Card>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-12 flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  Carregando semana...
+                </p>
+              </div>
+            ) : (
+              <WeekView
+                startDate={weekStart}
+                appointments={weekAppointments}
+                onSlotClick={openNewAt}
+                onAppointmentClick={openEdit}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <AppointmentDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        defaultDate={date}
+        defaultDate={dialogDefaultDate}
         onCreated={() => {
           load();
           toast.success('Agendamento criado');
@@ -378,13 +486,16 @@ export default function AgendaPage() {
             <AlertDialogDescription>
               {confirmAction?.type === 'cancel' ? (
                 <>
-                  O agendamento de <strong>{confirmAction.appointment.patient?.name}</strong>{' '}
+                  O agendamento de{' '}
+                  <strong>{confirmAction.appointment.patient?.name}</strong>{' '}
                   será marcado como cancelado. Fica no histórico.
                 </>
               ) : (
                 <>
-                  O agendamento de <strong>{confirmAction?.appointment.patient?.name}</strong>{' '}
-                  será removido <strong>permanentemente</strong>. Essa ação não pode ser desfeita.
+                  O agendamento de{' '}
+                  <strong>{confirmAction?.appointment.patient?.name}</strong>{' '}
+                  será removido <strong>permanentemente</strong>. Essa ação não
+                  pode ser desfeita.
                 </>
               )}
             </AlertDialogDescription>
@@ -399,7 +510,9 @@ export default function AgendaPage() {
                   : ''
               }
             >
-              {confirmAction?.type === 'cancel' ? 'Cancelar agendamento' : 'Excluir'}
+              {confirmAction?.type === 'cancel'
+                ? 'Cancelar agendamento'
+                : 'Excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -410,10 +523,22 @@ export default function AgendaPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 hover:bg-amber-100' },
-    CONFIRMED: { label: 'Confirmada', className: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' },
-    CANCELLED: { label: 'Cancelada', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
-    DONE: { label: 'Concluída', className: 'bg-gray-100 text-gray-700 hover:bg-gray-100' },
+    PENDING: {
+      label: 'Pendente',
+      className: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
+    },
+    CONFIRMED: {
+      label: 'Confirmada',
+      className: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100',
+    },
+    CANCELLED: {
+      label: 'Cancelada',
+      className: 'bg-red-100 text-red-800 hover:bg-red-100',
+    },
+    DONE: {
+      label: 'Concluída',
+      className: 'bg-gray-100 text-gray-700 hover:bg-gray-100',
+    },
   };
   const info =
     map[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
