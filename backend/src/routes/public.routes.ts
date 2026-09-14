@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { buildConfirmationMessage, sendWhatsApp } from '../utils/whatsapp';
-import { formatDateBR, formatTimeBR } from '../utils/datetime';
 
 export const publicRoutes = Router();
 
@@ -55,6 +54,16 @@ publicRoutes.get('/slots', async (req, res) => {
 
   const busyHours = new Set(busy.map((b) => new Date(b.scheduledAt).getHours()));
 
+  // Se a data for hoje, filtra horários que já passaram
+  const now = new Date();
+  const isToday =
+    dayDate.getFullYear() === now.getFullYear() &&
+    dayDate.getMonth() === now.getMonth() &&
+    dayDate.getDate() === now.getDate();
+
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
   const slots: { time: string; available: boolean }[] = [];
   const step = settings.slotMinutes / 60;
 
@@ -64,9 +73,15 @@ publicRoutes.get('/slots', async (req, res) => {
     const hh = String(hour).padStart(2, '0');
     const mm = String(minutes).padStart(2, '0');
 
+    // Se for hoje e o horário já passou, marca como indisponível
+    const hasPassed =
+      isToday &&
+      (hour < currentHour ||
+        (hour === currentHour && minutes <= currentMinute));
+
     slots.push({
       time: `${hh}:${mm}`,
-      available: !busyHours.has(hour),
+      available: !busyHours.has(hour) && !hasPassed,
     });
   }
 
@@ -94,6 +109,13 @@ publicRoutes.post('/book', async (req, res) => {
 
   const dt = new Date(scheduledAt);
 
+  // Bloqueia agendamento em data/hora já passada
+  if (dt.getTime() < Date.now()) {
+    return res
+      .status(409)
+      .json({ error: 'Não é possível agendar em data ou horário já passado' });
+  }
+
   // Verifica se o dia está aberto
   const settings = await getSettings();
   const weekdays = settings.weekdays.split(',').map(Number);
@@ -117,6 +139,7 @@ publicRoutes.post('/book', async (req, res) => {
     return res.status(409).json({ error: 'Horário já ocupado. Escolha outro.' });
   }
 
+  // Reaproveita paciente existente pelo WhatsApp ou cria novo
   let patient = await prisma.patient.findFirst({
     where: { whatsapp: patientWhatsapp },
   });
@@ -137,8 +160,11 @@ publicRoutes.post('/book', async (req, res) => {
     include: { patient: true, procedure: true },
   });
 
-  const dateStr = formatDateBR(dt);
-  const timeStr = formatTimeBR(dt);
+  const dateStr = dt.toLocaleDateString('pt-BR');
+  const timeStr = dt.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   const body = buildConfirmationMessage({
     patientName: appointment.patient.name,

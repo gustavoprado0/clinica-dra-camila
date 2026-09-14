@@ -2,19 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Calendar,
-  CheckCircle2,
-  Clock,
-  Users,
-  TrendingUp,
-  CalendarX,
-} from 'lucide-react';
+import { Calendar, CalendarX, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { DashboardSummary } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/empty-state';
 import { StatCardSkeleton, ListItemSkeleton } from '@/components/skeleton-card';
@@ -40,7 +32,7 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
-  const stats = summary?.stats || { totalToday: 0, confirmed: 0, pending: 0 };
+  const totalToday = summary?.stats.totalToday || 0;
   const today = summary?.today || [];
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
@@ -49,70 +41,69 @@ export default function DashboardPage() {
     month: 'long',
   });
 
+  // Saudação por hora do dia
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
-      {/* Header */}
+      {/* Saudação */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Visão Geral</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">
+          {greeting}, Dra. Camila
+        </h1>
         <p className="text-sm text-muted-foreground capitalize mt-1">
           {todayFormatted}
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Card único de consultas */}
+      {loading ? (
+        <StatCardSkeleton />
+      ) : (
+        <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-6 sm:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Consultas hoje
+                </p>
+                <p className="text-5xl sm:text-6xl font-bold text-primary mt-2 leading-none">
+                  {totalToday}
+                </p>
+                {totalToday > 0 && (
+                  <p className="text-sm text-muted-foreground mt-3">
+                    {totalToday === 1
+                      ? '1 paciente agendado'
+                      : `${totalToday} pacientes agendados`}
+                  </p>
+                )}
+              </div>
+              <div className="size-16 sm:size-20 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Calendar className="size-8 sm:size-10 text-primary" />
+              </div>
+            </div>
+
+            {totalToday > 0 && (
+              <Button
+                onClick={() => router.push('/agenda')}
+                className="mt-6 gap-2"
+                variant="default"
+              >
+                Ver agenda
+                <ArrowRight className="size-4" />
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Agenda do dia */}
       <section>
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Hoje
+          {totalToday > 0 ? 'Consultas de hoje' : 'Nada agendado pra hoje'}
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          {loading ? (
-            <>
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-            </>
-          ) : (
-            <>
-              <StatCard
-                label="Consultas"
-                value={stats.totalToday}
-                icon={Calendar}
-                accent="text-blue-600 bg-blue-50"
-              />
-              <StatCard
-                label="Confirmadas"
-                value={stats.confirmed}
-                icon={CheckCircle2}
-                accent="text-emerald-600 bg-emerald-50"
-              />
-              <StatCard
-                label="Pendentes"
-                value={stats.pending}
-                icon={Clock}
-                accent="text-amber-600 bg-amber-50"
-              />
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Agenda de hoje */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Agenda de hoje
-          </h2>
-          {!loading && today.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/agenda')}
-              className="text-xs h-7"
-            >
-              Ver agenda completa
-            </Button>
-          )}
-        </div>
 
         <Card>
           <CardContent className="p-0">
@@ -126,12 +117,12 @@ export default function DashboardPage() {
               <EmptyState
                 icon={CalendarX}
                 title="Nenhuma consulta agendada"
-                description="Quando você agendar uma consulta, ela aparece aqui."
+                description="Aproveite o dia livre! Ou crie um novo agendamento."
                 action={
                   <Button
                     size="sm"
                     onClick={() => router.push('/agenda')}
-                    className="mt-2"
+                    className="mt-2 gap-1.5"
                   >
                     Ir para agenda
                   </Button>
@@ -152,9 +143,11 @@ export default function DashboardPage() {
                     .toUpperCase();
 
                   return (
-                    <div
+                    <button
                       key={apt.id}
-                      className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 hover:bg-muted/40 transition"
+                      type="button"
+                      onClick={() => router.push('/agenda')}
+                      className="w-full text-left flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 hover:bg-muted/40 transition"
                     >
                       {/* Hora */}
                       <div className="flex flex-col items-center justify-center w-14 shrink-0">
@@ -178,9 +171,8 @@ export default function DashboardPage() {
                         </p>
                       </div>
 
-                      {/* Status */}
-                      <StatusBadge status={apt.status} />
-                    </div>
+                      <ArrowRight className="size-4 text-muted-foreground shrink-0" />
+                    </button>
                   );
                 })}
               </div>
@@ -190,60 +182,4 @@ export default function DashboardPage() {
       </section>
     </div>
   );
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: number;
-  icon: React.ElementType;
-  accent: string;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-3xl font-bold text-foreground">{value}</p>
-            <p className="text-sm text-muted-foreground mt-1">{label}</p>
-          </div>
-          <div
-            className={`size-10 rounded-lg flex items-center justify-center ${accent}`}
-          >
-            <Icon className="size-5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; className: string }> = {
-    PENDING: {
-      label: 'Pendente',
-      className: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
-    },
-    CONFIRMED: {
-      label: 'Confirmada',
-      className: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100',
-    },
-    CANCELLED: {
-      label: 'Cancelada',
-      className: 'bg-red-100 text-red-800 hover:bg-red-100',
-    },
-    DONE: {
-      label: 'Concluída',
-      className: 'bg-gray-100 text-gray-700 hover:bg-gray-100',
-    },
-  };
-  const info = map[status] || {
-    label: status,
-    className: 'bg-gray-100 text-gray-700',
-  };
-  return <Badge className={info.className}>{info.label}</Badge>;
 }

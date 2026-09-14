@@ -95,6 +95,13 @@ export function AppointmentDialog({
       return;
     }
 
+    // Bloqueia data/hora no passado
+    const selectedDateTime = new Date(`${date}T${time}:00`);
+    if (selectedDateTime.getTime() < Date.now()) {
+      setError('Não é possível agendar em data ou horário já passado');
+      return;
+    }
+
     setSaving(true);
     try {
       const local = new Date(`${date}T${time}:00`);
