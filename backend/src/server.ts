@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { prisma } from './lib/prisma';
@@ -19,6 +20,14 @@ const PORT = Number(process.env.PORT) || 3000;
 
 // Confia no proxy do Render/Vercel (necessário pro rate limit pegar o IP certo)
 app.set('trust proxy', 1);
+
+// Helmet — headers HTTP de segurança
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // desativado: o frontend é separado (Vercel)
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // permite imagens/recursos cross-domain
+  })
+);
 
 // CORS
 const allowedOrigins = [
