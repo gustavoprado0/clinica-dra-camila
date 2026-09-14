@@ -53,7 +53,7 @@ export default function DashboardPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Visão Geral</h1>
         <p className="text-sm text-muted-foreground capitalize mt-1">
           {todayFormatted}
         </p>

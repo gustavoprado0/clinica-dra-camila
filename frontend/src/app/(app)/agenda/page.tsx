@@ -21,7 +21,6 @@ import { api } from '@/lib/api';
 import type { Appointment, ClinicSettings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/empty-state';
@@ -389,7 +388,6 @@ export default function AgendaPage() {
                                   </p>
                                 </div>
 
-                                <StatusBadge status={apt.status} />
 
                                 <div className="flex items-center gap-1">
                                   {apt.status !== 'CONFIRMED' && (
@@ -558,26 +556,3 @@ export default function AgendaPage() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; className: string }> = {
-    PENDING: {
-      label: 'Pendente',
-      className: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
-    },
-    CONFIRMED: {
-      label: 'Confirmada',
-      className: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100',
-    },
-    CANCELLED: {
-      label: 'Cancelada',
-      className: 'bg-red-100 text-red-800 hover:bg-red-100',
-    },
-    DONE: {
-      label: 'Concluída',
-      className: 'bg-gray-100 text-gray-700 hover:bg-gray-100',
-    },
-  };
-  const info =
-    map[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
-  return <Badge className={info.className}>{info.label}</Badge>;
-}

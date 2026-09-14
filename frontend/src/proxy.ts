@@ -7,7 +7,7 @@ export const config = {
   matcher: '/api/proxy/:path*',
 };
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   // Pega o path depois de /api/proxy
   const path = req.nextUrl.pathname.replace(/^\/api\/proxy/, '');
 
