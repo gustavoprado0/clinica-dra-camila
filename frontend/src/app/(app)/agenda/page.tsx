@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import type { Appointment } from '@/lib/types';
+import type { Appointment, ClinicSettings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +60,7 @@ export default function AgendaPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [weekAppointments, setWeekAppointments] = useState<Appointment[]>([]);
+  const [weekdays, setWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(() => new Date());
 
@@ -73,6 +74,20 @@ export default function AgendaPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Segunda-feira da semana atual
+  // Carrega dias de funcionamento da clínica
+  useEffect(() => {
+    api
+      .get<ClinicSettings>('/api/settings')
+      .then((s) => {
+        if (s.weekdays) {
+          setWeekdays(s.weekdays.split(',').map(Number));
+        }
+      })
+      .catch(() => {
+        // mantém fallback (Seg-Sex)
+      });
+  }, []);
+
   const weekStart = useMemo(() => {
     const d = new Date(date);
     const day = d.getDay();
@@ -216,6 +231,26 @@ export default function AgendaPage() {
   function openNew() {
     setDialogDefaultDate(date);
     setDialogOpen(true);
+  }
+
+  async function handleAppointmentMove(apt: Appointment, newDate: Date) {
+    setBusyId(apt.id);
+    try {
+      await api.put(`/api/appointments/${apt.id}`, {
+        scheduledAt: newDate.toISOString(),
+      });
+      const dateLabel = newDate.toLocaleDateString('pt-BR');
+      const timeLabel = newDate.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      toast.success(`Agendamento movido para ${dateLabel} às ${timeLabel}`);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao mover');
+    } finally {
+      setBusyId(null);
+    }
   }
 
   const todayFormatted = date.toLocaleDateString('pt-BR', {
@@ -445,6 +480,8 @@ export default function AgendaPage() {
                 appointments={weekAppointments}
                 onSlotClick={openNewAt}
                 onAppointmentClick={openEdit}
+                onAppointmentMove={handleAppointmentMove}
+                weekdays={weekdays}
               />
             )}
           </CardContent>

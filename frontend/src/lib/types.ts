@@ -45,3 +45,12 @@ export interface DashboardSummary {
   };
   today: Appointment[];
 }
+
+export interface ClinicSettings {
+  id: string;
+  openHour: number;
+  closeHour: number;
+  slotMinutes: number;
+  weekdays: string;
+  updatedAt: string;
+}
