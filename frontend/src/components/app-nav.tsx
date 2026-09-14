@@ -32,7 +32,7 @@ export function AppNav({ collapsed = false, onNavigate }: AppNavProps) {
   const router = useRouter();
 
   async function handleLogout() {
-    await fetch('/api/auth/logout', {
+    await fetch('/api/proxy/auth/logout', {
       method: 'POST',
       credentials: 'include',
     });

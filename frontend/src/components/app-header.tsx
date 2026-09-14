@@ -29,8 +29,7 @@ export function AppHeader() {
   useEffect(() => {
     async function load() {
       try {
-        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-        const res = await fetch(`${API}/api/auth/me`, {
+        const res = await fetch('/api/proxy/auth/me', {
           credentials: 'include',
         });
         if (!res.ok) return;
@@ -44,8 +43,7 @@ export function AppHeader() {
   }, []);
 
   async function handleLogout() {
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-    await fetch(`${API}/api/auth/logout`, {
+    await fetch('/api/proxy/auth/logout', {
       method: 'POST',
       credentials: 'include',
     });
