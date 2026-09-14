@@ -103,6 +103,27 @@ appointmentsRoutes.post('/', async (req, res) => {
   const procedure = await prisma.procedure.findUnique({ where: { id: procedureId } });
   if (!procedure) return res.status(404).json({ error: 'Procedimento não encontrado' });
 
+
+  // Verifica se já existe outro agendamento no mesmo horário
+  const newDt = new Date(scheduledAt);
+  const hourStart = new Date(newDt);
+  hourStart.setMinutes(0, 0, 0);
+  const hourEnd = new Date(hourStart);
+  hourEnd.setHours(hourEnd.getHours() + 1);
+
+  const conflict = await prisma.appointment.findFirst({
+    where: {
+      scheduledAt: { gte: hourStart, lt: hourEnd },
+      status: { not: 'CANCELLED' },
+    },
+  });
+
+  if (conflict) {
+    return res.status(409).json({
+      error: 'Já existe um agendamento nesse horário. Escolha outro.',
+    });
+  }
+
   const appointment = await prisma.appointment.create({
     data: {
       patientId: finalPatientId,
