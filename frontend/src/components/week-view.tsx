@@ -40,6 +40,13 @@ function statusColor(status: string) {
   return map[status] || 'bg-muted border-border';
 }
 
+function shortName(full: string | undefined): string {
+  if (!full) return "";
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 2) return full;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
 interface DraggableCardProps {
   apt: Appointment;
   onClick: () => void;
@@ -83,7 +90,7 @@ function DraggableCard({ apt, onClick }: DraggableCardProps) {
           minute: '2-digit',
         })}
       </p>
-      <p className="truncate leading-tight mt-0.5">{apt.patient?.name}</p>
+      <p className="truncate leading-tight mt-0.5" title={apt.patient?.name}>{shortName(apt.patient?.name)}</p>
       <p className="truncate leading-tight opacity-70">
         {apt.procedure?.name}
       </p>
@@ -335,7 +342,7 @@ export function WeekView({
               })}
             </p>
             <p className="truncate leading-tight mt-0.5">
-              {activeApt.patient?.name}
+              {shortName(activeApt.patient?.name)}
             </p>
             <p className="truncate leading-tight opacity-70">
               {activeApt.procedure?.name}

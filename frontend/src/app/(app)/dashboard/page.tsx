@@ -164,7 +164,7 @@ export default function DashboardPage() {
                       {/* Infos */}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground truncate">
-                          {apt.patient?.name}
+                          {shortName(apt.patient?.name)}
                         </p>
                         <p className="text-sm text-muted-foreground truncate">
                           {apt.procedure?.name}
@@ -182,4 +182,11 @@ export default function DashboardPage() {
       </section>
     </div>
   );
+}
+
+function shortName(full: string | undefined): string {
+  if (!full) return '';
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 2) return full;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
 }

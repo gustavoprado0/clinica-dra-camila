@@ -377,7 +377,7 @@ export default function AgendaPage() {
                               >
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">
-                                    {apt.patient?.name}
+                                    {shortName(apt.patient?.name)}
                                   </p>
                                   <p className="text-xs text-muted-foreground truncate">
                                     {apt.procedure?.name} ·{' '}
@@ -556,3 +556,10 @@ export default function AgendaPage() {
   );
 }
 
+
+function shortName(full: string | undefined): string {
+  if (!full) return '';
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 2) return full;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
