@@ -15,10 +15,9 @@ export async function proxy(req: NextRequest) {
     targetUrl.searchParams.set(key, value);
   });
 
-  // Copia headers da requisição (exceto os que atrapalham)
   const headers = new Headers(req.headers);
   headers.delete('host');
-  headers.delete('accept-encoding'); // ← evita compressão que não conseguimos propagar
+  headers.delete('accept-encoding');
 
   let body: BodyInit | undefined = undefined;
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -33,17 +32,14 @@ export async function proxy(req: NextRequest) {
       redirect: 'manual',
     });
 
-    // Lê o conteúdo COMPLETO como arrayBuffer (descomprimido pelo fetch)
-    const responseBody = await response.arrayBuffer();
-
     const responseHeaders = new Headers(response.headers);
 
-    // Remove headers que causam problema no Edge Runtime
+    // Remove headers problemáticos
     responseHeaders.delete('content-encoding');
     responseHeaders.delete('content-length');
     responseHeaders.delete('transfer-encoding');
 
-    // Ajusta cookies pra ficar no domínio do frontend
+    // Ajusta cookies
     const setCookies = response.headers.getSetCookie?.() ?? [];
     responseHeaders.delete('set-cookie');
     for (const cookie of setCookies) {
@@ -52,6 +48,18 @@ export async function proxy(req: NextRequest) {
         .replace(/;\s*SameSite=None/gi, '; SameSite=Lax');
       responseHeaders.append('set-cookie', cleaned);
     }
+
+    // 204 e 304 NÃO podem ter body
+    if (response.status === 204 || response.status === 304) {
+      return new NextResponse(null, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      });
+    }
+
+    // Demais respostas: lê arrayBuffer
+    const responseBody = await response.arrayBuffer();
 
     return new NextResponse(responseBody, {
       status: response.status,
