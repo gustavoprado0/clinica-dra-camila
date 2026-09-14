@@ -13,6 +13,7 @@ import {
 import { api } from '@/lib/api';
 import type { Procedure } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { PhoneInput } from '@/components/phone-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -317,10 +318,10 @@ export default function PublicBookingPage() {
                   <Phone className="size-4 text-muted-foreground" />
                   WhatsApp
                 </Label>
-                <Input
+                <PhoneInput
                   id="whatsapp"
                   value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
+                  onChange={(v) => setWhatsapp(v)}
                   placeholder="(11) 99999-9999"
                   className="h-11"
                 />

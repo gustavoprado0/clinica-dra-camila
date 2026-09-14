@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import type { Patient } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/phone-input';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -123,13 +124,12 @@ export function PatientDialog({ open, onOpenChange, editing, onSaved }: Props) {
               <Phone className="size-4 text-muted-foreground" />
               WhatsApp <span className="text-destructive">*</span>
             </Label>
-            <Input
+            <PhoneInput
               id="whatsapp"
               placeholder="(11) 99999-9999"
               value={form.whatsapp}
-              onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+              onChange={(v) => setForm({ ...form, whatsapp: v })}
               required
-              className="h-11"
             />
           </div>
 
