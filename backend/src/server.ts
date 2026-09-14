@@ -12,11 +12,15 @@ import { dashboardRoutes } from './routes/dashboard.routes';
 import { publicRoutes } from './routes/public.routes';
 import { settingsRoutes } from './routes/settings.routes';
 import { requireAuth } from './lib/auth';
+import { authLimiter, publicLimiter } from './lib/rate-limit';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-// CORS — permite localhost em dev e o frontend em produção
+// Confia no proxy do Render/Vercel (necessário pro rate limit pegar o IP certo)
+app.set('trust proxy', 1);
+
+// CORS
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -26,11 +30,10 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Permite requests sem origin (curl, mobile, etc) e os domínios da lista
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, true); // Em MVP aceita tudo, ajuste depois
+        callback(null, true); // MVP: aceita tudo
       }
     },
     credentials: true,
@@ -41,6 +44,10 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// ---------- Rate limit global (todas as rotas) ----------
+app.use('/api', publicLimiter);
+
+// ---------- Healthchecks (sem rate limit rigoroso) ----------
 app.get('/api/ping', (_req, res) => {
   res.json({ ok: true, message: 'pong' });
 });
@@ -72,14 +79,14 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-// Público
+// ---------- Público ----------
 app.use('/api/public', publicRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Auth
-app.use('/api/auth', authRoutes);
+// ---------- Auth (com rate limit rigoroso) ----------
+app.use('/api/auth', authLimiter, authRoutes);
 
-// Protegidas
+// ---------- Protegidas ----------
 app.use('/api/patients', requireAuth, patientsRoutes);
 app.use('/api/procedures', proceduresRoutes);
 app.use('/api/appointments', requireAuth, appointmentsRoutes);
