@@ -12,6 +12,7 @@ import { appointmentsRoutes } from './routes/appointments.routes';
 import { dashboardRoutes } from './routes/dashboard.routes';
 import { publicRoutes } from './routes/public.routes';
 import { settingsRoutes } from './routes/settings.routes';
+import { notificationsRoutes } from './routes/notifications.routes';
 import { requireAuth } from './lib/auth';
 import { authLimiter, publicLimiter } from './lib/rate-limit';
 
@@ -100,6 +101,7 @@ app.use('/api/patients', requireAuth, patientsRoutes);
 app.use('/api/procedures', proceduresRoutes);
 app.use('/api/appointments', requireAuth, appointmentsRoutes);
 app.use('/api/dashboard', requireAuth, dashboardRoutes);
+app.use("/api/notifications", requireAuth, notificationsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
