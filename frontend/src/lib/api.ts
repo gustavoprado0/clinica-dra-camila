@@ -1,13 +1,9 @@
-// O frontend sempre chama /api/proxy/* (mesma origem).
-// O middleware Next.js encaminha pro backend real.
-// Em dev, /api/proxy também é interceptado pelo middleware.
 const API_PREFIX = '/api/proxy';
 
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // Aceita tanto '/api/xxx' quanto 'xxx'
   const cleanPath = path.startsWith('/api/')
     ? path.slice(4)
     : path.startsWith('/')
@@ -25,10 +21,31 @@ async function request<T>(
     },
   });
 
-  const data = await res.json().catch(() => ({}));
+  // 204 No Content ou 205 Reset Content → sem body
+  if (res.status === 204 || res.status === 205) {
+    if (!res.ok) {
+      throw new Error(`Erro ${res.status}`);
+    }
+    return undefined as T;
+  }
+
+  // Lê como texto primeiro (evita erro se não for JSON)
+  const text = await res.text();
+  let data: unknown = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { error: text };
+    }
+  }
 
   if (!res.ok) {
-    throw new Error(data.error || `Erro ${res.status}`);
+    const errorMsg =
+      typeof data === 'object' && data && 'error' in data
+        ? String((data as { error: unknown }).error)
+        : `Erro ${res.status}`;
+    throw new Error(errorMsg);
   }
 
   return data as T;
@@ -42,5 +59,5 @@ export const api = {
     request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  delete: <T = void>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
