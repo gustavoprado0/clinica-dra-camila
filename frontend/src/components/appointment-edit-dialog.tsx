@@ -1,12 +1,18 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Loader2, User, Stethoscope, Calendar as CalendarIcon, Clock } from 'lucide-react';
-import { api } from '@/lib/api';
-import type { Appointment, Patient, Procedure } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useEffect, useState } from "react";
+import {
+  Loader2,
+  User,
+  Stethoscope,
+  Calendar as CalendarIcon,
+  Clock,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import type { Appointment, Patient, Procedure } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -14,14 +20,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 
 interface Props {
   open: boolean;
@@ -40,12 +46,12 @@ export function AppointmentEditDialog({
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-  const [patientId, setPatientId] = useState('');
-  const [procedureId, setProcedureId] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('09:00');
+  const [patientId, setPatientId] = useState("");
+  const [procedureId, setProcedureId] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("09:00");
 
   useEffect(() => {
     if (!open || !appointment) return;
@@ -55,8 +61,8 @@ export function AppointmentEditDialog({
       setLoading(true);
       try {
         const [p, proc] = await Promise.all([
-          api.get<Patient[]>('/api/patients'),
-          api.get<Procedure[]>('/api/procedures'),
+          api.get<Patient[]>("/api/patients"),
+          api.get<Procedure[]>("/api/procedures"),
         ]);
         setPatients(p);
         setProcedures(proc);
@@ -66,14 +72,14 @@ export function AppointmentEditDialog({
 
         const d = new Date(apt.scheduledAt);
         const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const hh = String(d.getHours()).padStart(2, '0');
-        const mm = String(d.getMinutes()).padStart(2, '0');
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
         setDate(`${y}-${m}-${day}`);
         setTime(`${hh}:${mm}`);
       } catch {
-        setError('Erro ao carregar dados');
+        setError("Erro ao carregar dados");
       } finally {
         setLoading(false);
       }
@@ -84,7 +90,7 @@ export function AppointmentEditDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!appointment) return;
-    setError('');
+    setError("");
     setSaving(true);
 
     try {
@@ -98,7 +104,7 @@ export function AppointmentEditDialog({
       onOpenChange(false);
       onSaved?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar');
+      setError(err instanceof Error ? err.message : "Erro ao salvar");
     } finally {
       setSaving(false);
     }
@@ -129,7 +135,10 @@ export function AppointmentEditDialog({
                 <User className="size-4 text-muted-foreground" />
                 Paciente <span className="text-destructive">*</span>
               </Label>
-              <Select value={patientId} onValueChange={(v) => setPatientId(v ?? "")}>
+              <Select
+                value={patientId}
+                onValueChange={(v) => setPatientId(v ?? "")}
+              >
                 <SelectTrigger className="w-full h-11">
                   <SelectValue placeholder="Escolha um paciente">
                     {patientName}
@@ -150,7 +159,10 @@ export function AppointmentEditDialog({
                 <Stethoscope className="size-4 text-muted-foreground" />
                 Procedimento <span className="text-destructive">*</span>
               </Label>
-              <Select value={procedureId} onValueChange={(v) => setProcedureId(v ?? "")}>
+              <Select
+                value={procedureId}
+                onValueChange={(v) => setProcedureId(v ?? "")}
+              >
                 <SelectTrigger className="w-full h-11">
                   <SelectValue placeholder="Escolha um procedimento">
                     {procedureName}
@@ -170,9 +182,12 @@ export function AppointmentEditDialog({
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="date" className="flex items-center gap-2 text-sm font-medium">
+                <Label
+                  htmlFor="date"
+                  className="flex items-center gap-2 text-sm font-medium"
+                >
                   <CalendarIcon className="size-4 text-muted-foreground" />
                   Data <span className="text-destructive">*</span>
                 </Label>
@@ -187,7 +202,10 @@ export function AppointmentEditDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="time" className="flex items-center gap-2 text-sm font-medium">
+                <Label
+                  htmlFor="time"
+                  className="flex items-center gap-2 text-sm font-medium"
+                >
                   <Clock className="size-4 text-muted-foreground" />
                   Horário <span className="text-destructive">*</span>
                 </Label>
@@ -219,14 +237,18 @@ export function AppointmentEditDialog({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={saving} className="h-10 min-w-[120px]">
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="h-10 min-w-[120px]"
+                >
                   {saving ? (
                     <>
                       <Loader2 className="size-4 animate-spin" />
                       Salvando...
                     </>
                   ) : (
-                    'Salvar alterações'
+                    "Salvar alterações"
                   )}
                 </Button>
               </div>
