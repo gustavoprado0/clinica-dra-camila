@@ -37,6 +37,29 @@ appointmentsRoutes.get('/', async (req, res) => {
   res.json(list);
 });
 
+// LISTAR agendamentos da semana (?start=YYYY-MM-DD)
+appointmentsRoutes.get('/week', async (req, res) => {
+  const start =
+    (req.query.start as string) || new Date().toISOString().slice(0, 10);
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 7);
+
+  const list = await prisma.appointment.findMany({
+    where: {
+      scheduledAt: { gte: startDate, lt: endDate },
+    },
+    include: { patient: true, procedure: true },
+    orderBy: { scheduledAt: 'asc' },
+  });
+
+  res.json({
+    start,
+    end: endDate.toISOString().slice(0, 10),
+    appointments: list,
+  });
+});
+
 // BUSCAR por ID
 appointmentsRoutes.get('/:id', async (req, res) => {
   const apt = await prisma.appointment.findUnique({
