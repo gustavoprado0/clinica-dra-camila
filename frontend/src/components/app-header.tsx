@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUIStore } from '@/lib/ui-store';
+import { NotificationBell } from './notification-bell';
 
 const routeLabels: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -98,14 +99,7 @@ export function AppHeader() {
 
       {/* Direita — Notificações + User */}
       <div className="flex items-center gap-1 sm:gap-2">
-        <button
-          type="button"
-          className="size-9 inline-flex items-center justify-center rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground"
-          title="Notificações (em breve)"
-        >
-          <Bell className="size-[18px]" />
-        </button>
-
+        <NotificationBell />
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg hover:bg-muted transition">
             <div className="size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
